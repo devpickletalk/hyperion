@@ -6,7 +6,7 @@ _G.__MurderHUD_Running = true
 local WALK_LEAD      = 4.5
 local KNIFE_LEAD     = 2
 local SCAN_RATE      = 0.3
-local STAB_BLOCK_TTL = 0.4
+local STAB_WAIT      = 0.4
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -39,9 +39,9 @@ local lpVisuals         = {}
 local murderer          = nil
 local gunDropHighlights = {}
 
--- stabbed flag: set when KnifeStabbed fires, cleared after TTL
-local knifeStabbedAt    = -math.huge
-local stabListenerConn  = nil
+-- stab detection: incremented each time KnifeStabbed fires
+local stabSerial       = 0
+local stabListenerConn = nil
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0,   0),
@@ -86,7 +86,7 @@ local function connectStabListener(char)
         local stabbedRemote = events:WaitForChild("KnifeStabbed", 5)
         if not stabbedRemote then return end
         stabListenerConn = stabbedRemote.OnClientEvent:Connect(function()
-            knifeStabbedAt = tick()
+            stabSerial += 1
         end)
     end)
     if not ok then warn("[MurderHUD] StabListener: " .. tostring(err)) end
@@ -257,9 +257,7 @@ lp.CharacterAdded:Connect(function(char)
     clearAllLpVisuals()
     setWalkSpeed(char)
     setJumpPower(char)
-    knifeStabbedAt = -math.huge
-    -- reconnect stab listener on new character in a separate thread so
-    -- WaitForChild does not block the CharacterAdded callback
+    stabSerial = 0
     task.spawn(connectStabListener, char)
 end)
 if lp.Character then
@@ -391,8 +389,7 @@ RunService.Heartbeat:Connect(function(dt)
                           or (bp     and bp:FindFirstChild("Knife")     ~= nil)
             local aimPos
             if isLpMurd then
-                local nearest = getNearestPlayer()
-                aimPos = getKnifeAimPosition(nearest)
+                aimPos = getKnifeAimPosition(getNearestPlayer())
             else
                 aimPos = getAimPosition()
             end
@@ -475,21 +472,36 @@ UIS.InputBegan:Connect(function(input, processed)
     -- LP is murderer: knife silent aim
     local knifeRemote = getKnifeRemote()
     if knifeRemote then
-        -- KnifeStabbed fired recently: let the normal stab through, skip throw
-        if (tick() - knifeStabbedAt) <= STAB_BLOCK_TTL then return end
+        -- snapshot stabSerial at the moment of click
+        local serialAtClick = stabSerial
 
-        local target = getNearestPlayer()
-        if not target then warn("[MurderHUD] Knife: no valid target.") return end
-        local aimPos = getKnifeAimPosition(target)
-        if not aimPos then warn("[MurderHUD] Knife: no aim position.") return end
+        task.spawn(function()
+            -- wait up to STAB_WAIT seconds for KnifeStabbed to fire
+            task.wait(STAB_WAIT)
 
-        local ok, err = pcall(function()
-            knifeRemote:FireServer(
-                CFrame.new(myHRP.Position, aimPos),
-                CFrame.new(aimPos)
-            )
+            -- if stabSerial changed, a stab happened within the window → skip throw
+            if stabSerial ~= serialAtClick then return end
+
+            local remote = getKnifeRemote()
+            if not remote then warn("[MurderHUD] Knife: remote gone after wait.") return end
+
+            local target = getNearestPlayer()
+            if not target then warn("[MurderHUD] Knife: no valid target.") return end
+            local aimPos = getKnifeAimPosition(target)
+            if not aimPos then warn("[MurderHUD] Knife: no aim position.") return end
+
+            local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            local ok, err = pcall(function()
+                remote:FireServer(
+                    CFrame.new(hrp.Position, aimPos),
+                    CFrame.new(aimPos)
+                )
+            end)
+            if not ok then warn("[MurderHUD] Knife FireServer: " .. tostring(err)) end
         end)
-        if not ok then warn("[MurderHUD] Knife FireServer: " .. tostring(err)) end
+
         return
     end
 
