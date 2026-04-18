@@ -3,8 +3,9 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD = 4.5
-local SCAN_RATE = 0.3
+local WALK_LEAD  = 4.5
+local KNIFE_LEAD = 2
+local SCAN_RATE  = 0.3
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -53,20 +54,19 @@ rayParams.FilterType = Enum.RaycastFilterType.Exclude
 local HIDE_POS = Vector3.new(0, -9999, 0)
 
 -- ── Aim sphere ────────────────────────────────────────────────────────────────
-local aimSphere           = Instance.new("Part")
-aimSphere.Name            = "AimSphere"
-aimSphere.Size            = Vector3.new(0.8, 0.8, 0.8)
-aimSphere.Anchored        = true
-aimSphere.CanCollide      = false
-aimSphere.Color           = Color3.fromRGB(255, 0, 0)
-aimSphere.Material        = Enum.Material.Neon
-aimSphere.Transparency    = 0.6
-aimSphere.CastShadow      = false
-aimSphere.Position        = HIDE_POS
-aimSphere.Parent          = Workspace
-local aimMesh             = Instance.new("SpecialMesh", aimSphere)
-aimMesh.MeshType          = Enum.MeshType.Sphere
-
+local aimSphere        = Instance.new("Part")
+aimSphere.Name         = "AimSphere"
+aimSphere.Size         = Vector3.new(0.8, 0.8, 0.8)
+aimSphere.Anchored     = true
+aimSphere.CanCollide   = false
+aimSphere.Color        = Color3.fromRGB(255, 0, 0)
+aimSphere.Material     = Enum.Material.Neon
+aimSphere.Transparency = 0.6
+aimSphere.CastShadow   = false
+aimSphere.Position     = HIDE_POS
+aimSphere.Parent       = Workspace
+local aimMesh          = Instance.new("SpecialMesh", aimSphere)
+aimMesh.MeshType       = Enum.MeshType.Sphere
 
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
 local function attachGunDropHighlight(part)
@@ -81,14 +81,12 @@ local function attachGunDropHighlight(part)
         hl.Parent              = part
         gunDropHighlights[part] = hl
     end)
-    if not ok then warn("[SilentAim] GunDrop highlight: " .. tostring(err)) end
+    if not ok then warn("[MurderHUD] GunDrop highlight: " .. tostring(err)) end
 end
 
 local function scanGunDrops()
     local playerNames = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        playerNames[p.Name] = true
-    end
+    for _, p in ipairs(Players:GetPlayers()) do playerNames[p.Name] = true end
 
     for part, hl in pairs(gunDropHighlights) do
         if not part.Parent then
@@ -99,21 +97,17 @@ local function scanGunDrops()
 
     for _, child in ipairs(Workspace:GetChildren()) do
         if playerNames[child.Name] then continue end
-        if child.Name == "GunDrop" then
-            attachGunDropHighlight(child)
-        end
+        if child.Name == "GunDrop" then attachGunDropHighlight(child) end
         local ok, err = pcall(function()
             for _, desc in ipairs(child:GetDescendants()) do
-                if desc.Name == "GunDrop" then
-                    attachGunDropHighlight(desc)
-                end
+                if desc.Name == "GunDrop" then attachGunDropHighlight(desc) end
             end
         end)
-        if not ok then warn("[SilentAim] GunDrop scan: " .. tostring(err)) end
+        if not ok then warn("[MurderHUD] GunDrop scan: " .. tostring(err)) end
     end
 end
 
--- ── Walk speed ────────────────────────────────────────────────────────────────
+-- ── Walk / Jump ────────────────────────────────────────────────────────────────
 local function setWalkSpeed(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -125,7 +119,6 @@ local function setWalkSpeed(char)
     end
 end
 
--- ── Jump power ────────────────────────────────────────────────────────────────
 local function setJumpPower(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -161,7 +154,7 @@ local function attachLpVisual(p, char, color)
         hl.Parent              = char
         lpVisuals[p]           = { hl = hl, color = color }
     end)
-    if not ok then warn("[SilentAim] LpVisual: " .. tostring(err)) end
+    if not ok then warn("[MurderHUD] LpVisual: " .. tostring(err)) end
 end
 
 -- ── Role visuals ──────────────────────────────────────────────────────────────
@@ -185,7 +178,7 @@ local function attachVisuals(p, char, role)
         hl.Parent              = char
         visuals[p]             = { highlight = hl }
     end)
-    if not ok then warn("[SilentAim] RoleVisual: " .. tostring(err)) end
+    if not ok then warn("[MurderHUD] RoleVisual: " .. tostring(err)) end
 end
 
 -- ── Role detection ────────────────────────────────────────────────────────────
@@ -239,11 +232,12 @@ end)
 lp.CharacterAdded:Connect(function(char)
     clearAllLpVisuals()
     setWalkSpeed(char)
+    setJumpPower(char)
 end)
 if lp.Character then setWalkSpeed(lp.Character) end
 if lp.Character then setJumpPower(lp.Character) end
 
--- ── Aim ───────────────────────────────────────────────────────────────────────
+-- ── Gun aim position (targets murderer) ──────────────────────────────────────
 local function getAimPosition()
     if not murderer then return nil end
     local char = murderer.Character
@@ -262,7 +256,6 @@ local function getAimPosition()
     end
 
     local target = torso or hrp
-
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if myHRP and head then
@@ -281,12 +274,78 @@ local function getAimPosition()
     return target.Position
 end
 
+-- ── Knife aim: nearest living player ─────────────────────────────────────────
+local function getNearestPlayer()
+    local myChar = lp.Character
+    local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return nil end
+
+    local nearest, nearestDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == lp then continue end
+        local char = p.Character
+        if not char then continue end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hrp or not hum then continue end
+        if hum.Health <= 0 then continue end
+        local dist = (hrp.Position - myHRP.Position).Magnitude
+        if dist < nearestDist then
+            nearestDist = dist
+            nearest     = p
+        end
+    end
+    return nearest
+end
+
+-- ── Knife aim position for a given player ────────────────────────────────────
+local function getKnifeAimPosition(p)
+    if not p then return nil end
+    local char = p.Character
+    if not char then return nil end
+
+    local hrp   = char:FindFirstChild("HumanoidRootPart")
+    local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local hum   = char:FindFirstChildOfClass("Humanoid")
+    if not hrp then return nil end
+
+    -- player is in the air: aim slightly below HRP
+    local isAir      = hum and hum.FloorMaterial == Enum.Material.Air
+    local isClimbing = hum and hum:GetState() == Enum.HumanoidStateType.Climbing
+    if isAir and not isClimbing then
+        return hrp.Position - Vector3.new(0, 2, 0)
+    end
+
+    local target = torso or hrp
+
+    -- player is moving: lead by KNIFE_LEAD studs in movement direction
+    local vel  = hrp.AssemblyLinearVelocity
+    local hVel = Vector3.new(vel.X, 0, vel.Z)
+    if hVel.Magnitude >= 4 then
+        return target.Position + hVel.Unit * KNIFE_LEAD
+    end
+
+    return target.Position
+end
+
+-- ── Remote getters ────────────────────────────────────────────────────────────
 local function getShootRemote()
     local char = lp.Character
     if not char then return nil end
     local gun = char:FindFirstChild("Gun")
     if not gun then return nil end
     local r = gun:FindFirstChild("Shoot")
+    return (r and r:IsA("RemoteEvent")) and r or nil
+end
+
+local function getKnifeRemote()
+    local char = lp.Character
+    if not char then return nil end
+    local knife = char:FindFirstChild("Knife")
+    if not knife then return nil end
+    local events = knife:FindFirstChild("Events")
+    if not events then return nil end
+    local r = events:FindFirstChild("KnifeThrown")
     return (r and r:IsA("RemoteEvent")) and r or nil
 end
 
@@ -298,10 +357,21 @@ RunService.Heartbeat:Connect(function(dt)
     if sphereAccum >= 0.000001 then
         sphereAccum = 0
         local ok, err = pcall(function()
-            local aimPos       = getAimPosition()
+            local myChar   = lp.Character
+            local bp       = lp:FindFirstChild("Backpack")
+            local isLpMurd = myChar and myChar:FindFirstChild("Knife") ~= nil
+                          or (bp and bp:FindFirstChild("Knife") ~= nil)
+
+            local aimPos
+            if isLpMurd then
+                local nearest = getNearestPlayer()
+                aimPos = getKnifeAimPosition(nearest)
+            else
+                aimPos = getAimPosition()
+            end
             aimSphere.Position = aimPos or HIDE_POS
         end)
-        if not ok then warn("[SilentAim] Sphere: " .. tostring(err)) end
+        if not ok then warn("[MurderHUD] Sphere: " .. tostring(err)) end
     end
 
     scanAccum += dt
@@ -309,8 +379,10 @@ RunService.Heartbeat:Connect(function(dt)
     scanAccum = 0
 
     local ok, err = pcall(function()
+        local char     = lp.Character
         local bp       = lp:FindFirstChild("Backpack")
-        local isLpMurd = bp ~= nil and bp:FindFirstChild("Knife") ~= nil
+        local isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
+                      or (bp  and bp:FindFirstChild("Knife")   ~= nil)
         local newMurderer = nil
 
         for _, p in ipairs(Players:GetPlayers()) do
@@ -318,36 +390,35 @@ RunService.Heartbeat:Connect(function(dt)
 
             local role    = getRole(p)
             local oldRole = roles[p]
-            local char    = p.Character
+            local pChar   = p.Character
 
             if role ~= oldRole then
                 roles[p] = role
-                if role and char then
-                    attachVisuals(p, char, role)
+                if role and pChar then
+                    attachVisuals(p, pChar, role)
                 else
                     removeVisuals(p)
                 end
-            elseif role and char then
+            elseif role and pChar then
                 local v = visuals[p]
                 if not v or not v.highlight or not v.highlight.Parent then
-                    attachVisuals(p, char, role)
+                    attachVisuals(p, pChar, role)
                 end
             end
 
-            if role == "murder" and char then newMurderer = p end
+            if role == "murder" and pChar then newMurderer = p end
 
-            if isLpMurd and char then
+            if isLpMurd and pChar then
                 local lpColor
                 if role == "sheriff" then
                     lpColor = LP_COLOR.sheriff
                 elseif role ~= "murder" then
                     lpColor = LP_COLOR.norole
                 end
-
                 if lpColor then
                     local lv = lpVisuals[p]
                     if not lv or not lv.hl or not lv.hl.Parent or lv.color ~= lpColor then
-                        attachLpVisual(p, char, lpColor)
+                        attachLpVisual(p, pChar, lpColor)
                     end
                 else
                     removeLpVisual(p)
@@ -360,7 +431,7 @@ RunService.Heartbeat:Connect(function(dt)
 
         scanGunDrops()
     end)
-    if not ok then warn("[SilentAim] Scan: " .. tostring(err)) end
+    if not ok then warn("[MurderHUD] Scan: " .. tostring(err)) end
 end)
 
 -- ── Click / Touch intercept ───────────────────────────────────────────────────
@@ -369,20 +440,38 @@ UIS.InputBegan:Connect(function(input, processed)
     local isFire = input.UserInputType == Enum.UserInputType.MouseButton1
                or  input.UserInputType == Enum.UserInputType.Touch
     if not isFire then return end
-    if not murderer then return end
-
-    local aimPos = getAimPosition()
-    if not aimPos then return end
-
-    local remote = getShootRemote()
-    if not remote then warn("[SilentAim] Gun/Shoot remote not found.") return end
 
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
 
+    -- LP is murderer: knife silent aim
+    local knifeRemote = getKnifeRemote()
+    if knifeRemote then
+        local target = getNearestPlayer()
+        if not target then warn("[MurderHUD] Knife: no valid target.") return end
+        local aimPos = getKnifeAimPosition(target)
+        if not aimPos then warn("[MurderHUD] Knife: no aim position.") return end
+
+        local ok, err = pcall(function()
+            knifeRemote:FireServer(
+                CFrame.new(myHRP.Position, aimPos),
+                CFrame.new(aimPos)
+            )
+        end)
+        if not ok then warn("[MurderHUD] Knife FireServer: " .. tostring(err)) end
+        return
+    end
+
+    -- LP has gun (sheriff): gun silent aim at murderer
+    if not murderer then return end
+    local aimPos = getAimPosition()
+    if not aimPos then return end
+    local remote = getShootRemote()
+    if not remote then warn("[MurderHUD] Gun/Shoot remote not found.") return end
+
     local ok, err = pcall(function()
         remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
     end)
-    if not ok then warn("[SilentAim] FireServer: " .. tostring(err)) end
+    if not ok then warn("[MurderHUD] Gun FireServer: " .. tostring(err)) end
 end)
