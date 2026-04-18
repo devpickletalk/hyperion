@@ -472,7 +472,6 @@ UIS.InputBegan:Connect(function(input, processed)
     local aimPos = getAimPosition()
     if not aimPos then return end
     local remote = getShootRemote()
-    if not remote then warn("[MurderHUD] Gun/Shoot remote not found.") return end
 
     local ok, err = pcall(function()
         remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
