@@ -54,33 +54,34 @@ rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local HIDE_POS = Vector3.new(0, -9999, 0)
 
--- ── Aim sphere ────────────────────────────────────────────────────────────────
-local aimSphere        = Instance.new("Part")
-aimSphere.Name         = "AimSphere"
-aimSphere.Size         = Vector3.new(0.8, 0.8, 0.8)
-aimSphere.Anchored     = true
-aimSphere.CanCollide   = false
-aimSphere.Color        = Color3.fromRGB(255, 0, 0)
-aimSphere.Material     = Enum.Material.Neon
-aimSphere.Transparency = 0.5
-aimSphere.CastShadow   = false
-aimSphere.Position     = HIDE_POS
-aimSphere.Parent       = Workspace
-local aimMesh          = Instance.new("SpecialMesh", aimSphere)
-aimMesh.MeshType       = Enum.MeshType.Sphere
-
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
 local function attachGunDropHighlight(part)
     if gunDropHighlights[part] then return end
     local ok, err = pcall(function()
-        local hl                = Instance.new("Highlight")
-        hl.Adornee              = part
-        hl.DepthMode            = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency     = 1
-        hl.OutlineColor         = Color3.fromRGB(0, 255, 80)
-        hl.OutlineTransparency  = 0.5
-        hl.Parent               = part
-        gunDropHighlights[part] = hl
+        local color = Color3.fromRGB(0, 255, 80)
+        local bb = Instance.new("BillboardGui")
+        bb.Name        = "GunDropTracker"
+        bb.Adornee     = part
+        bb.AlwaysOnTop = true
+        bb.Size        = UDim2.new(0, 5, 0, 5)
+        bb.StudsOffset = Vector3.new(0, 1, 0)
+        bb.Parent      = lp.PlayerGui
+        local frame = Instance.new("Frame", bb)
+        frame.ZIndex               = 10
+        frame.BackgroundTransparency = 0.3
+        frame.BackgroundColor3     = color
+        frame.Size                 = UDim2.new(1, 0, 1, 0)
+        local txt = Instance.new("TextLabel", bb)
+        txt.ZIndex                  = 10
+        txt.Text                    = "Gun"
+        txt.BackgroundTransparency  = 1
+        txt.Position                = UDim2.new(0, 0, 0, -35)
+        txt.Size                    = UDim2.new(1, 0, 10, 0)
+        txt.Font                    = Enum.Font.ArialBold
+        txt.TextSize                = 12
+        txt.TextStrokeTransparency  = 0.5
+        txt.TextColor3              = color
+        gunDropHighlights[part] = bb
     end)
     if not ok then warn("[MurderHUD] GunDrop highlight: " .. tostring(err)) end
 end
@@ -89,9 +90,9 @@ local function scanGunDrops()
     local playerNames = {}
     for _, p in ipairs(Players:GetPlayers()) do playerNames[p.Name] = true end
 
-    for part, hl in pairs(gunDropHighlights) do
+    for part, bb in pairs(gunDropHighlights) do
         if not part.Parent then
-            if hl and hl.Parent then hl:Destroy() end
+            if bb and bb.Parent then bb:Destroy() end
             gunDropHighlights[part] = nil
         end
     end
@@ -134,7 +135,7 @@ end
 -- ── LP murderer ESP ───────────────────────────────────────────────────────────
 local function removeLpVisual(p)
     local lv = lpVisuals[p]
-    if lv and lv.hl and lv.hl.Parent then lv.hl:Destroy() end
+    if lv and lv.bb and lv.bb.Parent then lv.bb:Destroy() end
     lpVisuals[p] = nil
 end
 
@@ -144,16 +145,33 @@ end
 
 local function attachLpVisual(p, char, color)
     removeLpVisual(p)
+    local head = char:FindFirstChild("Head")
+    if not head then return end
     local ok, err = pcall(function()
-        local hl               = Instance.new("Highlight")
-        hl.Name                = "LpEspHighlight"
-        hl.Adornee             = char
-        hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency    = 1
-        hl.OutlineColor        = color
-        hl.OutlineTransparency = 0.5
-        hl.Parent              = char
-        lpVisuals[p]           = { hl = hl, color = color }
+        local bb = Instance.new("BillboardGui")
+        bb.Name        = "LpEspTracker"
+        bb.Adornee     = head
+        bb.AlwaysOnTop = true
+        bb.ExtentsOffset = Vector3.new(0, 1, 0)
+        bb.Size        = UDim2.new(0, 5, 0, 5)
+        bb.StudsOffset = Vector3.new(0, 1, 0)
+        bb.Parent      = lp.PlayerGui
+        local frame = Instance.new("Frame", bb)
+        frame.ZIndex               = 10
+        frame.BackgroundTransparency = 0.3
+        frame.BackgroundColor3     = color
+        frame.Size                 = UDim2.new(1, 0, 1, 0)
+        local txt = Instance.new("TextLabel", bb)
+        txt.ZIndex                 = 10
+        txt.Text                   = p.Name
+        txt.BackgroundTransparency = 1
+        txt.Position               = UDim2.new(0, 0, 0, -35)
+        txt.Size                   = UDim2.new(1, 0, 10, 0)
+        txt.Font                   = Enum.Font.ArialBold
+        txt.TextSize               = 12
+        txt.TextStrokeTransparency = 0.5
+        txt.TextColor3             = color
+        lpVisuals[p] = { bb = bb, color = color }
     end)
     if not ok then warn("[MurderHUD] LpVisual: " .. tostring(err)) end
 end
@@ -162,22 +180,40 @@ end
 local function removeVisuals(p)
     local v = visuals[p]
     if not v then return end
-    if v.highlight and v.highlight.Parent then v.highlight:Destroy() end
+    if v.bb and v.bb.Parent then v.bb:Destroy() end
     visuals[p] = nil
 end
 
 local function attachVisuals(p, char, role)
     removeVisuals(p)
+    local head = char:FindFirstChild("Head")
+    if not head then return end
     local ok, err = pcall(function()
-        local hl               = Instance.new("Highlight")
-        hl.Name                = "RoleHighlight"
-        hl.Adornee             = char
-        hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency    = 1
-        hl.OutlineColor        = ROLE_COLOR[role]
-        hl.OutlineTransparency = 0.5
-        hl.Parent              = char
-        visuals[p]             = { highlight = hl }
+        local color = ROLE_COLOR[role]
+        local bb = Instance.new("BillboardGui")
+        bb.Name        = "tracker"
+        bb.Adornee     = head
+        bb.AlwaysOnTop = true
+        bb.ExtentsOffset = Vector3.new(0, 1, 0)
+        bb.Size        = UDim2.new(0, 5, 0, 5)
+        bb.StudsOffset = Vector3.new(0, 1, 0)
+        bb.Parent      = lp.PlayerGui
+        local frame = Instance.new("Frame", bb)
+        frame.ZIndex               = 10
+        frame.BackgroundTransparency = 0.3
+        frame.BackgroundColor3     = color
+        frame.Size                 = UDim2.new(1, 0, 1, 0)
+        local txt = Instance.new("TextLabel", bb)
+        txt.ZIndex                 = 10
+        txt.Text                   = p.Name
+        txt.BackgroundTransparency = 1
+        txt.Position               = UDim2.new(0, 0, 0, -35)
+        txt.Size                   = UDim2.new(1, 0, 10, 0)
+        txt.Font                   = Enum.Font.ArialBold
+        txt.TextSize               = 12
+        txt.TextStrokeTransparency = 0.5
+        txt.TextColor3             = color
+        visuals[p] = { bb = bb }
     end)
     if not ok then warn("[MurderHUD] RoleVisual: " .. tostring(err)) end
 end
@@ -351,26 +387,6 @@ end
 local scanAccum   = 0
 local sphereAccum = 0
 RunService.Heartbeat:Connect(function(dt)
-    sphereAccum += dt
-    if sphereAccum >= 0.000001 then
-        sphereAccum = 0
-        local ok, err = pcall(function()
-            local myChar   = lp.Character
-            local bp       = lp:FindFirstChild("Backpack")
-            local isLpMurd = (myChar and myChar:FindFirstChild("Knife") ~= nil)
-                          or (bp     and bp:FindFirstChild("Knife")     ~= nil)
-            local aimPos
-            if isLpMurd then
-                local nearest = getNearestPlayerAndDist()
-                aimPos = getKnifeAimPosition(nearest)
-            else
-                aimPos = getAimPosition()
-            end
-            aimSphere.Position = aimPos or HIDE_POS
-        end)
-        if not ok then warn("[MurderHUD] Sphere: " .. tostring(err)) end
-    end
-
     scanAccum += dt
     if scanAccum < SCAN_RATE then return end
     scanAccum = 0
