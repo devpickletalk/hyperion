@@ -129,7 +129,7 @@ end
 local function setJumpPower(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
-        hum.JumpPower = 53
+        hum.JumpPower = 52
     else
         char.ChildAdded:Connect(function(child)
             if child:IsA("Humanoid") then child.JumpPower = 65 end
