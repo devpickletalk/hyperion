@@ -3,10 +3,11 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD      = 4.5
-local KNIFE_LEAD     = 2
-local SCAN_RATE      = 0.3
-local STAB_WAIT      = 0.4
+local WALK_LEAD  = 4.5
+local KNIFE_LEAD = 2
+local SCAN_RATE  = 0.3
+local KNIFE_STAB_DIST  = 3
+local KNIFE_THROW_DIST = 4
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -39,10 +40,6 @@ local lpVisuals         = {}
 local murderer          = nil
 local gunDropHighlights = {}
 
--- stab detection: incremented each time KnifeStabbed fires
-local stabSerial       = 0
-local stabListenerConn = nil
-
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0,   0),
     sheriff = Color3.fromRGB(0,   100, 255),
@@ -72,37 +69,17 @@ aimSphere.Parent       = Workspace
 local aimMesh          = Instance.new("SpecialMesh", aimSphere)
 aimMesh.MeshType       = Enum.MeshType.Sphere
 
--- ── KnifeStabbed listener ─────────────────────────────────────────────────────
-local function connectStabListener(char)
-    if stabListenerConn then
-        stabListenerConn:Disconnect()
-        stabListenerConn = nil
-    end
-    local ok, err = pcall(function()
-        local knife = char:WaitForChild("Knife", 5)
-        if not knife then return end
-        local events = knife:WaitForChild("Events", 5)
-        if not events then return end
-        local stabbedRemote = events:WaitForChild("KnifeStabbed", 5)
-        if not stabbedRemote then return end
-        stabListenerConn = stabbedRemote.OnClientEvent:Connect(function()
-            stabSerial += 1
-        end)
-    end)
-    if not ok then warn("[MurderHUD] StabListener: " .. tostring(err)) end
-end
-
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
 local function attachGunDropHighlight(part)
     if gunDropHighlights[part] then return end
     local ok, err = pcall(function()
-        local hl               = Instance.new("Highlight")
-        hl.Adornee             = part
-        hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency    = 1
-        hl.OutlineColor        = Color3.fromRGB(0, 255, 80)
-        hl.OutlineTransparency = 0.6
-        hl.Parent              = part
+        local hl                = Instance.new("Highlight")
+        hl.Adornee              = part
+        hl.DepthMode            = Enum.HighlightDepthMode.AlwaysOnTop
+        hl.FillTransparency     = 1
+        hl.OutlineColor         = Color3.fromRGB(0, 255, 80)
+        hl.OutlineTransparency  = 0.6
+        hl.Parent               = part
         gunDropHighlights[part] = hl
     end)
     if not ok then warn("[MurderHUD] GunDrop highlight: " .. tostring(err)) end
@@ -131,7 +108,7 @@ local function scanGunDrops()
     end
 end
 
--- ── Walk / Jump ────────────────────────────────────────────────────────────────
+-- ── Walk / Jump ───────────────────────────────────────────────────────────────
 local function setWalkSpeed(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -257,14 +234,9 @@ lp.CharacterAdded:Connect(function(char)
     clearAllLpVisuals()
     setWalkSpeed(char)
     setJumpPower(char)
-    stabSerial = 0
-    task.spawn(connectStabListener, char)
 end)
-if lp.Character then
-    setWalkSpeed(lp.Character)
-    setJumpPower(lp.Character)
-    task.spawn(connectStabListener, lp.Character)
-end
+if lp.Character then setWalkSpeed(lp.Character) end
+if lp.Character then setJumpPower(lp.Character) end
 
 -- ── Gun aim position (targets murderer) ──────────────────────────────────────
 local function getAimPosition()
@@ -303,11 +275,11 @@ local function getAimPosition()
     return target.Position
 end
 
--- ── Knife: nearest living player ─────────────────────────────────────────────
-local function getNearestPlayer()
+-- ── Knife: nearest living player + distance ───────────────────────────────────
+local function getNearestPlayerAndDist()
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return nil end
+    if not myHRP then return nil, math.huge end
 
     local nearest, nearestDist = nil, math.huge
     for _, p in ipairs(Players:GetPlayers()) do
@@ -324,7 +296,7 @@ local function getNearestPlayer()
             nearest     = p
         end
     end
-    return nearest
+    return nearest, nearestDist
 end
 
 -- ── Knife aim position for a given player ────────────────────────────────────
@@ -389,7 +361,8 @@ RunService.Heartbeat:Connect(function(dt)
                           or (bp     and bp:FindFirstChild("Knife")     ~= nil)
             local aimPos
             if isLpMurd then
-                aimPos = getKnifeAimPosition(getNearestPlayer())
+                local nearest = getNearestPlayerAndDist()
+                aimPos = getKnifeAimPosition(nearest)
             else
                 aimPos = getAimPosition()
             end
@@ -472,36 +445,25 @@ UIS.InputBegan:Connect(function(input, processed)
     -- LP is murderer: knife silent aim
     local knifeRemote = getKnifeRemote()
     if knifeRemote then
-        -- snapshot stabSerial at the moment of click
-        local serialAtClick = stabSerial
+        local target, dist = getNearestPlayerAndDist()
 
-        task.spawn(function()
-            -- wait up to STAB_WAIT seconds for KnifeStabbed to fire
-            task.wait(STAB_WAIT)
+        -- nearest player is within stab range: do not throw
+        if dist <= KNIFE_STAB_DIST then return end
 
-            -- if stabSerial changed, a stab happened within the window → skip throw
-            if stabSerial ~= serialAtClick then return end
+        -- nearest player is not far enough to warrant a throw
+        if dist <= KNIFE_THROW_DIST then return end
 
-            local remote = getKnifeRemote()
-            if not remote then warn("[MurderHUD] Knife: remote gone after wait.") return end
+        if not target then warn("[MurderHUD] Knife: no valid target.") return end
+        local aimPos = getKnifeAimPosition(target)
+        if not aimPos then warn("[MurderHUD] Knife: no aim position.") return end
 
-            local target = getNearestPlayer()
-            if not target then warn("[MurderHUD] Knife: no valid target.") return end
-            local aimPos = getKnifeAimPosition(target)
-            if not aimPos then warn("[MurderHUD] Knife: no aim position.") return end
-
-            local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-
-            local ok, err = pcall(function()
-                remote:FireServer(
-                    CFrame.new(hrp.Position, aimPos),
-                    CFrame.new(aimPos)
-                )
-            end)
-            if not ok then warn("[MurderHUD] Knife FireServer: " .. tostring(err)) end
+        local ok, err = pcall(function()
+            knifeRemote:FireServer(
+                CFrame.new(myHRP.Position, aimPos),
+                CFrame.new(aimPos)
+            )
         end)
-
+        if not ok then warn("[MurderHUD] Knife FireServer: " .. tostring(err)) end
         return
     end
 
