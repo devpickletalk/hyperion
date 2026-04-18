@@ -3,7 +3,7 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD = 1.5
+local WALK_LEAD = 3.5
 local SCAN_RATE = 0.3
 
 local Players    = game:GetService("Players")
@@ -66,14 +66,7 @@ aimSphere.Position        = HIDE_POS
 aimSphere.Parent          = Workspace
 local aimMesh             = Instance.new("SpecialMesh", aimSphere)
 aimMesh.MeshType          = Enum.MeshType.Sphere
-local aimHL               = Instance.new("Highlight", aimSphere)
-aimHL.Adornee             = aimSphere
-aimHL.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-aimHL.FillColor           = Color3.fromRGB(255, 0, 0)
-aimHL.FillTransparency    = 0.6
-aimHL.OutlineColor        = Color3.fromRGB(255, 0, 0)
-aimHL.OutlineTransparency = 0.7
-aimHL.Parent              = aimSphere
+
 
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
 local function attachGunDropHighlight(part)
@@ -127,7 +120,7 @@ local function setWalkSpeed(char)
         hum.WalkSpeed = 18
     else
         char.ChildAdded:Connect(function(child)
-            if child:IsA("Humanoid") then child.WalkSpeed = 18 end
+            if child:IsA("Humanoid") then child.WalkSpeed = 20 end
         end)
     end
 end
@@ -289,7 +282,7 @@ local scanAccum   = 0
 local sphereAccum = 0
 RunService.Heartbeat:Connect(function(dt)
     sphereAccum += dt
-    if sphereAccum >= 0.1 then
+    if sphereAccum >= 0.000001 then
         sphereAccum = 0
         local ok, err = pcall(function()
             local aimPos       = getAimPosition()
