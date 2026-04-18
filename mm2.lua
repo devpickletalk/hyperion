@@ -6,8 +6,8 @@ _G.__MurderHUD_Running = true
 local WALK_LEAD  = 4.5
 local KNIFE_LEAD = 2.5
 local SCAN_RATE  = 0.3
-local KNIFE_STAB_DIST  = 4
-local KNIFE_THROW_DIST = 5
+local KNIFE_STAB_DIST  = 3
+local KNIFE_THROW_DIST = 4
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
