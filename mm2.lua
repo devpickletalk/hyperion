@@ -117,10 +117,10 @@ end
 local function setWalkSpeed(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
-        hum.WalkSpeed = 20
+        hum.WalkSpeed = 19
     else
         char.ChildAdded:Connect(function(child)
-            if child:IsA("Humanoid") then child.WalkSpeed = 20 end
+            if child:IsA("Humanoid") then child.WalkSpeed = 19 end
         end)
     end
 end
