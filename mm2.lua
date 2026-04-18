@@ -3,9 +3,10 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD  = 4.5
-local KNIFE_LEAD = 2
-local SCAN_RATE  = 0.3
+local WALK_LEAD      = 4.5
+local KNIFE_LEAD     = 2
+local SCAN_RATE      = 0.3
+local STAB_BLOCK_TTL = 0.4
 
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -38,11 +39,14 @@ local lpVisuals         = {}
 local murderer          = nil
 local gunDropHighlights = {}
 
+-- stabbed flag: set when KnifeStabbed fires, cleared after TTL
+local knifeStabbedAt    = -math.huge
+local stabListenerConn  = nil
+
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0,   0),
     sheriff = Color3.fromRGB(0,   100, 255),
 }
-
 local LP_COLOR = {
     norole  = Color3.fromRGB(0, 255, 80),
     sheriff = Color3.fromRGB(0, 100, 255),
@@ -67,6 +71,26 @@ aimSphere.Position     = HIDE_POS
 aimSphere.Parent       = Workspace
 local aimMesh          = Instance.new("SpecialMesh", aimSphere)
 aimMesh.MeshType       = Enum.MeshType.Sphere
+
+-- ── KnifeStabbed listener ─────────────────────────────────────────────────────
+local function connectStabListener(char)
+    if stabListenerConn then
+        stabListenerConn:Disconnect()
+        stabListenerConn = nil
+    end
+    local ok, err = pcall(function()
+        local knife = char:WaitForChild("Knife", 5)
+        if not knife then return end
+        local events = knife:WaitForChild("Events", 5)
+        if not events then return end
+        local stabbedRemote = events:WaitForChild("KnifeStabbed", 5)
+        if not stabbedRemote then return end
+        stabListenerConn = stabbedRemote.OnClientEvent:Connect(function()
+            knifeStabbedAt = tick()
+        end)
+    end)
+    if not ok then warn("[MurderHUD] StabListener: " .. tostring(err)) end
+end
 
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
 local function attachGunDropHighlight(part)
@@ -233,9 +257,16 @@ lp.CharacterAdded:Connect(function(char)
     clearAllLpVisuals()
     setWalkSpeed(char)
     setJumpPower(char)
+    knifeStabbedAt = -math.huge
+    -- reconnect stab listener on new character in a separate thread so
+    -- WaitForChild does not block the CharacterAdded callback
+    task.spawn(connectStabListener, char)
 end)
-if lp.Character then setWalkSpeed(lp.Character) end
-if lp.Character then setJumpPower(lp.Character) end
+if lp.Character then
+    setWalkSpeed(lp.Character)
+    setJumpPower(lp.Character)
+    task.spawn(connectStabListener, lp.Character)
+end
 
 -- ── Gun aim position (targets murderer) ──────────────────────────────────────
 local function getAimPosition()
@@ -274,7 +305,7 @@ local function getAimPosition()
     return target.Position
 end
 
--- ── Knife aim: nearest living player ─────────────────────────────────────────
+-- ── Knife: nearest living player ─────────────────────────────────────────────
 local function getNearestPlayer()
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
@@ -309,7 +340,6 @@ local function getKnifeAimPosition(p)
     local hum   = char:FindFirstChildOfClass("Humanoid")
     if not hrp then return nil end
 
-    -- player is in the air: aim slightly below HRP
     local isAir      = hum and hum.FloorMaterial == Enum.Material.Air
     local isClimbing = hum and hum:GetState() == Enum.HumanoidStateType.Climbing
     if isAir and not isClimbing then
@@ -317,10 +347,8 @@ local function getKnifeAimPosition(p)
     end
 
     local target = torso or hrp
-
-    -- player is moving: lead by KNIFE_LEAD studs in movement direction
-    local vel  = hrp.AssemblyLinearVelocity
-    local hVel = Vector3.new(vel.X, 0, vel.Z)
+    local vel    = hrp.AssemblyLinearVelocity
+    local hVel   = Vector3.new(vel.X, 0, vel.Z)
     if hVel.Magnitude >= 4 then
         return target.Position + hVel.Unit * KNIFE_LEAD
     end
@@ -359,9 +387,8 @@ RunService.Heartbeat:Connect(function(dt)
         local ok, err = pcall(function()
             local myChar   = lp.Character
             local bp       = lp:FindFirstChild("Backpack")
-            local isLpMurd = myChar and myChar:FindFirstChild("Knife") ~= nil
-                          or (bp and bp:FindFirstChild("Knife") ~= nil)
-
+            local isLpMurd = (myChar and myChar:FindFirstChild("Knife") ~= nil)
+                          or (bp     and bp:FindFirstChild("Knife")     ~= nil)
             local aimPos
             if isLpMurd then
                 local nearest = getNearestPlayer()
@@ -382,7 +409,7 @@ RunService.Heartbeat:Connect(function(dt)
         local char     = lp.Character
         local bp       = lp:FindFirstChild("Backpack")
         local isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
-                      or (bp  and bp:FindFirstChild("Knife")   ~= nil)
+                      or (bp   and bp:FindFirstChild("Knife")   ~= nil)
         local newMurderer = nil
 
         for _, p in ipairs(Players:GetPlayers()) do
@@ -448,6 +475,9 @@ UIS.InputBegan:Connect(function(input, processed)
     -- LP is murderer: knife silent aim
     local knifeRemote = getKnifeRemote()
     if knifeRemote then
+        -- KnifeStabbed fired recently: let the normal stab through, skip throw
+        if (tick() - knifeStabbedAt) <= STAB_BLOCK_TTL then return end
+
         local target = getNearestPlayer()
         if not target then warn("[MurderHUD] Knife: no valid target.") return end
         local aimPos = getKnifeAimPosition(target)
