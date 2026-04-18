@@ -125,6 +125,18 @@ local function setWalkSpeed(char)
     end
 end
 
+-- ── Jump power ────────────────────────────────────────────────────────────────
+local function setJumpPower(char)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.JumpPower = 65
+    else
+        char.ChildAdded:Connect(function(child)
+            if child:IsA("Humanoid") then child.JumpPower = 65 end
+        end)
+    end
+end
+
 -- ── LP murderer ESP ───────────────────────────────────────────────────────────
 local function removeLpVisual(p)
     local lv = lpVisuals[p]
@@ -229,6 +241,7 @@ lp.CharacterAdded:Connect(function(char)
     setWalkSpeed(char)
 end)
 if lp.Character then setWalkSpeed(lp.Character) end
+if lp.Character then setJumpPower(lp.Character) end
 
 -- ── Aim ───────────────────────────────────────────────────────────────────────
 local function getAimPosition()
