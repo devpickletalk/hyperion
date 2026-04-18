@@ -3,7 +3,7 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD = 3.5
+local WALK_LEAD = 1.5
 local SCAN_RATE = 0.3
 
 local Players    = game:GetService("Players")
@@ -70,7 +70,7 @@ local aimHL               = Instance.new("Highlight", aimSphere)
 aimHL.Adornee             = aimSphere
 aimHL.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
 aimHL.FillColor           = Color3.fromRGB(255, 0, 0)
-aimHL.FillTransparency    = 0.5
+aimHL.FillTransparency    = 0.6
 aimHL.OutlineColor        = Color3.fromRGB(255, 0, 0)
 aimHL.OutlineTransparency = 0.7
 aimHL.Parent              = aimSphere
@@ -83,7 +83,7 @@ local function attachGunDropHighlight(part)
         hl.Adornee             = part
         hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
         hl.FillColor           = Color3.fromRGB(0, 255, 80)
-        hl.FillTransparency    = 1
+        hl.FillTransparency    = 0.6
         hl.OutlineColor        = Color3.fromRGB(0, 255, 80)
         hl.OutlineTransparency = 0.7
         hl.Parent              = part
@@ -151,7 +151,7 @@ local function attachLpVisual(p, char, color)
         hl.Name                = "LpEspHighlight"
         hl.Adornee             = char
         hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency    = 1
+        hl.FillTransparency    = 0.6
         hl.OutlineColor        = color
         hl.OutlineTransparency = 0.7
         hl.Parent              = char
@@ -175,7 +175,7 @@ local function attachVisuals(p, char, role)
         hl.Name                = "RoleHighlight"
         hl.Adornee             = char
         hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-        hl.FillTransparency    = 1
+        hl.FillTransparency    = 0.6
         hl.OutlineColor        = ROLE_COLOR[role]
         hl.OutlineTransparency = 0.7
         hl.Parent              = char
@@ -250,7 +250,9 @@ local function getAimPosition()
     local hum   = char:FindFirstChildOfClass("Humanoid")
     if not hrp then return nil end
 
-    if hum and hum.FloorMaterial == Enum.Material.Air then
+    local isAir      = hum and hum.FloorMaterial == Enum.Material.Air
+    local isClimbing = hum and hum:GetState() == Enum.HumanoidStateType.Climbing
+    if isAir and not isClimbing then
         return hrp.Position - Vector3.new(0, 3, 0)
     end
 
@@ -302,7 +304,6 @@ RunService.Heartbeat:Connect(function(dt)
     scanAccum = 0
 
     local ok, err = pcall(function()
-        local myChar   = lp.Character
         local bp       = lp:FindFirstChild("Backpack")
         local isLpMurd = bp ~= nil and bp:FindFirstChild("Knife") ~= nil
         local newMurderer = nil
@@ -347,7 +348,6 @@ RunService.Heartbeat:Connect(function(dt)
                     removeLpVisual(p)
                 end
             end
-            -- no else: lpVisuals persist until character reset
         end
 
         murderer = newMurderer
