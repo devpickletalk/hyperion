@@ -1,6 +1,6 @@
 -- LocalScript: StarterPlayerScripts
 
-local WALK_LEAD = 1
+local WALK_LEAD = 3
 local SCAN_RATE = 0.3
 
 local Players    = game:GetService("Players")
@@ -44,8 +44,10 @@ local LP_COLOR = {
     sheriff = Color3.fromRGB(0,   100, 255),
 }
 
-local rayParams       = RaycastParams.new()
-rayParams.FilterType  = Enum.RaycastFilterType.Exclude
+local rayParams      = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local HIDE_POS = Vector3.new(0, -9999, 0)
 
 -- ── Aim sphere ────────────────────────────────────────────────────────────────
 local aimSphere           = Instance.new("Part")
@@ -53,7 +55,11 @@ aimSphere.Name            = "AimSphere"
 aimSphere.Size            = Vector3.new(0.8, 0.8, 0.8)
 aimSphere.Anchored        = true
 aimSphere.CanCollide      = false
-aimSphere.Transparency    = 1
+aimSphere.Color           = Color3.fromRGB(255, 0, 0)
+aimSphere.Material        = Enum.Material.Neon
+aimSphere.Transparency    = 0.5
+aimSphere.CastShadow      = false
+aimSphere.Position        = HIDE_POS
 aimSphere.Parent          = Workspace
 local aimMesh             = Instance.new("SpecialMesh", aimSphere)
 aimMesh.MeshType          = Enum.MeshType.Sphere
@@ -61,8 +67,9 @@ local aimHL               = Instance.new("Highlight", aimSphere)
 aimHL.Adornee             = aimSphere
 aimHL.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
 aimHL.FillColor           = Color3.fromRGB(255, 0, 0)
-aimHL.FillTransparency    = 1
-aimHL.OutlineTransparency = 1
+aimHL.FillTransparency    = 0.5
+aimHL.OutlineColor        = Color3.fromRGB(255, 0, 0)
+aimHL.OutlineTransparency = 0.7
 aimHL.Parent              = aimSphere
 
 -- ── Gun drop ESP ──────────────────────────────────────────────────────────────
@@ -73,9 +80,9 @@ local function attachGunDropHighlight(part)
         hl.Adornee             = part
         hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
         hl.FillColor           = Color3.fromRGB(0, 255, 80)
-        hl.FillTransparency    = 0.5
+        hl.FillTransparency    = 1
         hl.OutlineColor        = Color3.fromRGB(0, 255, 80)
-        hl.OutlineTransparency = 0
+        hl.OutlineTransparency = 0.7
         hl.Parent              = part
         gunDropHighlights[part] = hl
     end)
@@ -115,10 +122,10 @@ end
 local function setWalkSpeed(char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if hum then
-        hum.WalkSpeed = 20
+        hum.WalkSpeed = 18
     else
         char.ChildAdded:Connect(function(child)
-            if child:IsA("Humanoid") then child.WalkSpeed = 20 end
+            if child:IsA("Humanoid") then child.WalkSpeed = 18 end
         end)
     end
 end
@@ -143,7 +150,7 @@ local function attachLpVisual(p, char, color)
         hl.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
         hl.FillTransparency    = 1
         hl.OutlineColor        = color
-        hl.OutlineTransparency = 0
+        hl.OutlineTransparency = 0.7
         hl.Parent              = char
         lpVisuals[p]           = { hl = hl, color = color }
     end)
@@ -276,9 +283,9 @@ RunService.Heartbeat:Connect(function(dt)
     scanAccum = 0
 
     local ok, err = pcall(function()
-        local myChar      = lp.Character
-        local bp          = lp:FindFirstChild("Backpack")
-        local isLpMurd    = bp ~= nil and bp:FindFirstChild("Knife") ~= nil
+        local myChar   = lp.Character
+        local bp       = lp:FindFirstChild("Backpack")
+        local isLpMurd = bp ~= nil and bp:FindFirstChild("Knife") ~= nil
         local newMurderer = nil
 
         for _, p in ipairs(Players:GetPlayers()) do
@@ -320,9 +327,8 @@ RunService.Heartbeat:Connect(function(dt)
                 else
                     removeLpVisual(p)
                 end
-            elseif lpVisuals[p] then
-                removeLpVisual(p)
             end
+            -- no else: lpVisuals persist until character reset
         end
 
         murderer = newMurderer
@@ -332,10 +338,9 @@ RunService.Heartbeat:Connect(function(dt)
 
         local aimPos = getAimPosition()
         if aimPos then
-            aimSphere.Position     = aimPos
-            aimHL.FillTransparency = 0.5
+            aimSphere.Position = aimPos
         else
-            aimHL.FillTransparency = 1
+            aimSphere.Position = HIDE_POS
         end
     end)
     if not ok then warn("[SilentAim] Scan: " .. tostring(err)) end
