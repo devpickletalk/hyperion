@@ -3,7 +3,7 @@
 if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
-local WALK_LEAD = 2
+local WALK_LEAD = 3
 local SCAN_RATE = 0.3
 
 local Players    = game:GetService("Players")
