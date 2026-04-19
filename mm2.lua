@@ -274,9 +274,12 @@ end)
 if lp.Character then setWalkSpeed(lp.Character) end
 if lp.Character then setJumpPower(lp.Character) end
 
--- ── Fake HRP + Noclip System ──────────────────────────────────────────────────
-local fakeHRPs  = {}  -- p -> Part (local-only, never replicated)
-local charParts = {}  -- p -> array of BaseParts to noclip
+-- ── Fake HRP + Expand + Noclip ───────────────────────────────────────────────
+local fakeHRPs  = {}
+local charParts = {}
+
+local REAL_HRP_SIZE = Vector3.new(10, 10, 5)
+local FAKE_HRP_SIZE = Vector3.new(2, 2, 1)
 
 local function rebuildCharParts(p)
     local char = p.Character
@@ -294,6 +297,16 @@ local function rebuildCharParts(p)
     end)
 end
 
+local function expandRealHRP(p)
+    local char = p.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Size       = REAL_HRP_SIZE
+        hrp.CanCollide = false
+    end
+end
+
 local function ensureFakeHRP(p)
     if fakeHRPs[p] and fakeHRPs[p].Parent then return end
     local ok, err = pcall(function()
@@ -305,7 +318,7 @@ local function ensureFakeHRP(p)
         part.CanTouch     = false
         part.Transparency = 1
         part.CastShadow   = false
-        part.Size         = Vector3.new(2, 2, 1)
+        part.Size         = FAKE_HRP_SIZE
         part.CFrame       = CFrame.new(HIDE_POS)
         part.Parent       = Workspace
         fakeHRPs[p]       = part
@@ -313,25 +326,32 @@ local function ensureFakeHRP(p)
     if not ok then warn("[MurderHUD] FakeHRP create: " .. tostring(err)) end
 end
 
+local function setupPlayer(p)
+    ensureFakeHRP(p)
+    if p.Character then
+        expandRealHRP(p)
+        rebuildCharParts(p)
+    end
+    p.CharacterAdded:Connect(function()
+        expandRealHRP(p)
+        rebuildCharParts(p)
+    end)
+end
+
 for _, p in ipairs(Players:GetPlayers()) do
     if p == lp then continue end
-    ensureFakeHRP(p)
-    if p.Character then rebuildCharParts(p) end
-    p.CharacterAdded:Connect(function() rebuildCharParts(p) end)
+    setupPlayer(p)
 end
 
 Players.PlayerAdded:Connect(function(p)
     if p == lp then return end
-    ensureFakeHRP(p)
-    p.CharacterAdded:Connect(function() rebuildCharParts(p) end)
+    setupPlayer(p)
 end)
 
 Players.PlayerRemoving:Connect(function(p)
     local fake = fakeHRPs[p]
-    if fake then
-        if fake.Parent then fake:Destroy() end
-        fakeHRPs[p] = nil
-    end
+    if fake and fake.Parent then fake:Destroy() end
+    fakeHRPs[p]  = nil
     charParts[p] = nil
 end)
 
@@ -340,8 +360,11 @@ RunService.Heartbeat:Connect(function()
         local char = p.Character
         local hrp  = char and char:FindFirstChild("HumanoidRootPart")
         if hrp then
-            fakePart.Size   = hrp.Size
             fakePart.CFrame = hrp.CFrame
+            if hrp.Size ~= REAL_HRP_SIZE then
+                hrp.Size       = REAL_HRP_SIZE
+                hrp.CanCollide = false
+            end
             local list = charParts[p]
             if list then
                 for i = 1, #list do
