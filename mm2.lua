@@ -5,7 +5,7 @@ _G.__MurderHUD_Running = true
 
 local WALK_LEAD  = 4.5
 local KNIFE_LEAD = 1
-local SCAN_RATE  = 0.2
+local SCAN_RATE  = 0.3
 local KNIFE_STAB_DIST  = 3.5
 local KNIFE_THROW_DIST = 4.5
 
@@ -273,6 +273,35 @@ lp.CharacterAdded:Connect(function(char)
 end)
 if lp.Character then setWalkSpeed(lp.Character) end
 if lp.Character then setJumpPower(lp.Character) end
+
+-- ── Hitbox expansion ─────────────────────────────────────────────────────────
+local HRP_3X = Vector3.new(5, 5, 2) -- default HRP is (2,2,1)
+
+local function expandHitbox(char)
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Size = HRP_3X
+    else
+        local c; c = char.ChildAdded:Connect(function(child)
+            if child.Name == "HumanoidRootPart" then
+                child.Size = HRP_3X
+                c:Disconnect()
+            end
+        end)
+    end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p.Character then expandHitbox(p.Character) end
+    p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
+end
+Players.PlayerAdded:Connect(function(p)
+    if p.Character then expandHitbox(p.Character) end
+    p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
+end)
+if lp.Character then expandHitbox(lp.Character) end
+lp.CharacterAdded:Connect(function(char) expandHitbox(char) end)
 
 -- ── Gun aim position (targets murderer) ──────────────────────────────────────
 local function getAimPosition()
