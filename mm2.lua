@@ -278,7 +278,7 @@ if lp.Character then setJumpPower(lp.Character) end
 local fakeHRPs  = {}
 local charParts = {}
 
-local REAL_HRP_SIZE = Vector3.new(10, 10, 5)
+local REAL_HRP_SIZE = Vector3.new(10, 4, 10)
 local FAKE_HRP_SIZE = Vector3.new(2, 2, 1)
 
 local function rebuildCharParts(p)
