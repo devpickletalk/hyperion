@@ -511,24 +511,26 @@ local function getNearestPlayerAndDist()
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return nil, math.huge end
+    local myPos  = myHRP.Position
     local nearest, nearestDist = nil, math.huge
+    local charFilter = {}
+    for _, op in ipairs(Players:GetPlayers()) do
+        if op.Character then charFilter[#charFilter + 1] = op.Character end
+    end
+    rayParams.FilterDescendantsInstances = charFilter
     for _, p in ipairs(Players:GetPlayers()) do
         if p == lp then continue end
+        local fake = fakeHRPs[p]
+        if not fake or not fake.Parent then continue end
         local char = p.Character
         if not char then continue end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hrp or not hum then continue end
-        if hum.Health <= 0 then continue end
-        local dist = (hrp.Position - myHRP.Position).Magnitude
+        if not hum or hum.Health <= 0 then continue end
+        local fakePos = fake.Position
+        local dist    = (fakePos - myPos).Magnitude
         if dist >= nearestDist then continue end
-        local charFilter = { myChar }
-        for _, op in ipairs(Players:GetPlayers()) do
-            if op.Character then charFilter[#charFilter + 1] = op.Character end
-        end
-        rayParams.FilterDescendantsInstances = charFilter
-        local dir    = hrp.Position - myHRP.Position
-        local result = Workspace:Raycast(myHRP.Position, dir, rayParams)
+        local dir    = fakePos - myPos
+        local result = Workspace:Raycast(myPos, dir, rayParams)
         if result then continue end
         nearestDist = dist
         nearest     = p
