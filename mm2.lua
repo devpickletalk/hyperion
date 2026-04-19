@@ -274,33 +274,87 @@ end)
 if lp.Character then setWalkSpeed(lp.Character) end
 if lp.Character then setJumpPower(lp.Character) end
 
--- ── Hitbox expansion ─────────────────────────────────────────────────────────
-local HRP_3X = Vector3.new(5, 5, 2) -- default HRP is (2,2,1)
+-- ── Fake HRP + Noclip System ──────────────────────────────────────────────────
+local fakeHRPs  = {}  -- p -> Part (local-only, never replicated)
+local charParts = {}  -- p -> array of BaseParts to noclip
 
-local function expandHitbox(char)
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.Size = HRP_3X
-    else
-        local c; c = char.ChildAdded:Connect(function(child)
-            if child.Name == "HumanoidRootPart" then
-                child.Size = HRP_3X
-                c:Disconnect()
-            end
-        end)
+local function rebuildCharParts(p)
+    local char = p.Character
+    if not char then charParts[p] = nil return end
+    local list = {}
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then list[#list + 1] = v end
     end
+    charParts[p] = list
+    char.DescendantAdded:Connect(function(v)
+        if v:IsA("BasePart") then
+            local l = charParts[p]
+            if l then l[#l + 1] = v end
+        end
+    end)
+end
+
+local function ensureFakeHRP(p)
+    if fakeHRPs[p] and fakeHRPs[p].Parent then return end
+    local ok, err = pcall(function()
+        local part = Instance.new("Part")
+        part.Name         = "FakeHRP_" .. p.Name
+        part.Anchored     = true
+        part.CanCollide   = true
+        part.CanQuery     = false
+        part.CanTouch     = false
+        part.Transparency = 1
+        part.CastShadow   = false
+        part.Size         = Vector3.new(2, 2, 1)
+        part.CFrame       = CFrame.new(HIDE_POS)
+        part.Parent       = Workspace
+        fakeHRPs[p]       = part
+    end)
+    if not ok then warn("[MurderHUD] FakeHRP create: " .. tostring(err)) end
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
     if p == lp then continue end
-    if p.Character then expandHitbox(p.Character) end
-    p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
+    ensureFakeHRP(p)
+    if p.Character then rebuildCharParts(p) end
+    p.CharacterAdded:Connect(function() rebuildCharParts(p) end)
 end
+
 Players.PlayerAdded:Connect(function(p)
     if p == lp then return end
-    if p.Character then expandHitbox(p.Character) end
-    p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
+    ensureFakeHRP(p)
+    p.CharacterAdded:Connect(function() rebuildCharParts(p) end)
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    local fake = fakeHRPs[p]
+    if fake then
+        if fake.Parent then fake:Destroy() end
+        fakeHRPs[p] = nil
+    end
+    charParts[p] = nil
+end)
+
+RunService.Heartbeat:Connect(function()
+    for p, fakePart in pairs(fakeHRPs) do
+        local char = p.Character
+        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            fakePart.Size   = hrp.Size
+            fakePart.CFrame = hrp.CFrame
+            local list = charParts[p]
+            if list then
+                for i = 1, #list do
+                    local v = list[i]
+                    if v and v.Parent and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        else
+            fakePart.CFrame = CFrame.new(HIDE_POS)
+        end
+    end
 end)
 
 -- ── Gun aim position (targets murderer) ──────────────────────────────────────
