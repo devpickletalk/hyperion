@@ -506,6 +506,11 @@ local function getNearestPlayerAndDist()
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return nil, math.huge end
+    local charFilter = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then charFilter[#charFilter + 1] = p.Character end
+    end
+    rayParams.FilterDescendantsInstances = charFilter
     local nearest, nearestDist = nil, math.huge
     for _, p in ipairs(Players:GetPlayers()) do
         if p == lp then continue end
@@ -517,7 +522,6 @@ local function getNearestPlayerAndDist()
         if hum.Health <= 0 then continue end
         local dist = (hrp.Position - myHRP.Position).Magnitude
         if dist >= nearestDist then continue end
-        rayParams.FilterDescendantsInstances = { myChar, char }
         local dir    = hrp.Position - myHRP.Position
         local result = Workspace:Raycast(myHRP.Position, dir, rayParams)
         if result then continue end
