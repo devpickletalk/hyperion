@@ -293,15 +293,15 @@ local function expandHitbox(char)
 end
 
 for _, p in ipairs(Players:GetPlayers()) do
+    if p == lp then continue end
     if p.Character then expandHitbox(p.Character) end
     p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
 end
 Players.PlayerAdded:Connect(function(p)
+    if p == lp then return end
     if p.Character then expandHitbox(p.Character) end
     p.CharacterAdded:Connect(function(char) expandHitbox(char) end)
 end)
-if lp.Character then expandHitbox(lp.Character) end
-lp.CharacterAdded:Connect(function(char) expandHitbox(char) end)
 
 -- ── Gun aim position (targets murderer) ──────────────────────────────────────
 local function getAimPosition()
