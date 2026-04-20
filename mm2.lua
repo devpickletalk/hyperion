@@ -264,6 +264,11 @@ local function endRound()
         task.cancel(roundTimerThread)
         roundTimerThread = nil
     end
+    for p in pairs(visuals) do removeVisuals(p) end
+    clearAllLpVisuals()
+    roles      = {}
+    stickyRoles = {}
+    murderer   = nil
 end
 
 local function checkInnocentsDead()
@@ -349,9 +354,7 @@ local function refreshLpMurd()
     isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
             or (bp   and bp:FindFirstChild("Knife")   ~= nil)
     if prev == isLpMurd then return end
-    if not isLpMurd then
-        clearAllLpVisuals()
-    else
+    if isLpMurd then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= lp then updateLpVisualFor(p) end
         end
@@ -388,8 +391,6 @@ local function watchChar(p, char)
         if parent ~= nil then return end
         roles[p]       = nil
         stickyRoles[p] = nil
-        removeLpVisual(p)
-        removeVisuals(p)
         if murderer == p then
             murderer = nil
             endRound()
@@ -468,8 +469,6 @@ local function setupPlayer(p)
     -- Watch future characters (new char = new round, clear sticky)
     p.CharacterAdded:Connect(function(char)
         stickyRoles[p] = nil
-        removeLpVisual(p)
-        removeVisuals(p)
         watchChar(p, char)
         watchContainer(p, char, false)
         local bp2 = p:FindFirstChild("Backpack")
@@ -536,8 +535,6 @@ do
 end
 
 lp.CharacterAdded:Connect(function(char)
-    clearAllLpVisuals()
-    isLpMurd = false
     setWalkSpeed(char)
     setJumpPower(char)
     watchContainer(lp, char, true)
