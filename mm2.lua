@@ -282,6 +282,36 @@ local function applyRole(p)
     end
 end
 
+local quickShotLoop = nil
+
+local function stopQuickShotLoop()
+    if quickShotLoop then
+        quickShotLoop:Disconnect()
+        quickShotLoop = nil
+    end
+end
+
+local function startQuickShotLoop()
+    stopQuickShotLoop()
+    quickShotLoop = RunService.Heartbeat:Connect(function()
+        if isLpMurd or isLpSheriff then
+            stopQuickShotLoop()
+            return
+        end
+        local char = lp.Character
+        local bp   = lp:FindFirstChild("Backpack")
+        local gun  = (bp   and bp:FindFirstChild("Gun"))
+                  or (char and char:FindFirstChild("Gun"))
+        if not gun then return end
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and gun.Parent ~= char then
+            local ok, err = pcall(function() hum:EquipTool(gun) end)
+            if not ok then warn("[MurderHUD] QuickShot equip: " .. tostring(err)) end
+        end
+        stopQuickShotLoop()
+    end)
+end
+
 -- ── LP murderer state ─────────────────────────────────────────────────────────
 local function refreshLpMurd()
     local char = lp.Character
@@ -290,13 +320,6 @@ local function refreshLpMurd()
     isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
             or (bp   and bp:FindFirstChild("Knife")   ~= nil)
     if prev == isLpMurd then return end
-    if not prev and isLpMurd then
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://90905467412247"
-        s.Parent = Workspace
-        s:Play()
-        game:GetService("Debris"):AddItem(s, 10)
-    end
     if not isLpMurd then
         clearAllLpVisuals()
     else
@@ -454,14 +477,7 @@ local function refreshLpSheriff()
     local prev = isLpSheriff
     isLpSheriff = (char and char:FindFirstChild("Gun") ~= nil)
                or (bp   and bp:FindFirstChild("Gun")   ~= nil)
-    if prev == isLpSheriff then return end
-    if not prev and isLpSheriff then
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://90905467412247"
-        s.Parent = Workspace
-        s:Play()
-        game:GetService("Debris"):AddItem(s, 10)
-    end
+    if prev == isLpSheriff then return end1 
     if isLpSheriff then
         stopQuickShotLoop()
     else
@@ -475,36 +491,6 @@ local function watchLpGun(container)
     end)
     container.ChildRemoved:Connect(function(child)
         if child.Name == "Gun" then refreshLpSheriff() end
-    end)
-end
-
-local quickShotLoop = nil
-
-local function stopQuickShotLoop()
-    if quickShotLoop then
-        quickShotLoop:Disconnect()
-        quickShotLoop = nil
-    end
-end
-
-local function startQuickShotLoop()
-    stopQuickShotLoop()
-    quickShotLoop = RunService.Heartbeat:Connect(function()
-        if isLpMurd or isLpSheriff then
-            stopQuickShotLoop()
-            return
-        end
-        local char = lp.Character
-        local bp   = lp:FindFirstChild("Backpack")
-        local gun  = (bp   and bp:FindFirstChild("Gun"))
-                  or (char and char:FindFirstChild("Gun"))
-        if not gun then return end
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum and gun.Parent ~= char then
-            local ok, err = pcall(function() hum:EquipTool(gun) end)
-            if not ok then warn("[MurderHUD] QuickShot equip: " .. tostring(err)) end
-        end
-        stopQuickShotLoop()
     end)
 end
 
