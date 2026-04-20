@@ -26,6 +26,8 @@ local isLpSheriff = false
 local gunDropHighlights = {}
 local originalSheriff = nil
 local gunDropped      = false
+local roundActive       = false
+local roundTimerThread  = nil
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255,   0,   0),
@@ -257,6 +259,34 @@ local function updateLpVisualFor(p)
     end
 end
 
+local function endRound()
+    if not roundActive then return end
+    roundActive    = false
+    gunDropped     = false
+    if roundTimerThread then
+        task.cancel(roundTimerThread)
+        roundTimerThread = nil
+    end
+end
+
+local function checkInnocentsDead()
+    if not roundActive then return end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == murderer then continue end
+        local char = p.Character
+        local hum  = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then return end
+    end
+    endRound()
+end
+
+local function startRound()
+    endRound()
+    gunDropped       = false
+    roundActive      = true
+    roundTimerThread = task.delay(179, endRound)
+end
+
 -- ── Apply role state for a player ─────────────────────────────────────────────
 local function applyRole(p)
     local role  = getRole(p)
@@ -264,7 +294,10 @@ local function applyRole(p)
     local old   = roles[p]
     roles[p] = role
     if role == "murder" then
-        murderer = p
+        if murderer ~= p then
+            murderer = p
+            startRound()
+        end
     elseif old == "murder" and murderer == p then
         murderer = nil
     end
@@ -360,7 +393,12 @@ local function watchChar(p, char)
         stickyRoles[p] = nil
         removeLpVisual(p)
         removeVisuals(p)
-        if murderer == p then murderer = nil gunDropped  = false end
+        if murderer == p then
+            murderer = nil
+            endRound()
+        else
+            checkInnocentsDead()
+        end
     end)
 end
 
@@ -525,7 +563,12 @@ Players.PlayerRemoving:Connect(function(p)
     stickyRoles[p] = nil
     removeLpVisual(p)
     removeVisuals(p)
-    if murderer == p then murderer = nil gunDropped  = false end
+    if murderer == p then
+        murderer = nil
+        endRound()
+    else
+        checkInnocentsDead()
+    end
     local fake = fakeHRPs[p]
     if fake and fake.Parent then fake:Destroy() end
     fakeHRPs[p]  = nil
