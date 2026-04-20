@@ -191,14 +191,21 @@ end
 
 -- ── Role detection ────────────────────────────────────────────────────────────
 local function getRole(p)
-    local char = p.Character
-    local bp   = p:FindFirstChild("Backpack")
+    local char      = p.Character
+    local bp        = p:FindFirstChild("Backpack")
+    local wsModel   = Workspace:FindFirstChild(p.Name)
     if not char then return stickyRoles[p] end
-    if char:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife")) then
+    local hasKnife = char:FindFirstChild("Knife")
+        or (bp       and bp:FindFirstChild("Knife"))
+        or (wsModel  and wsModel:FindFirstChild("Knife"))
+    if hasKnife then
         stickyRoles[p] = "murder"
         return "murder"
     end
-    if char:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+    local hasGun = char:FindFirstChild("Gun")
+        or (bp       and bp:FindFirstChild("Gun"))
+        or (wsModel  and wsModel:FindFirstChild("Gun"))
+    if hasGun then
         stickyRoles[p] = "sheriff"
         return "sheriff"
     end
