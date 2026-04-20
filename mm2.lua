@@ -384,6 +384,20 @@ local function watchChar(p, char)
         hum.Died:Connect(function()
             removeLpVisual(p)
             removeVisuals(p)
+            if murderer == p then
+                murderer = nil
+                task.delay(6, function()
+                    gunDropped = false
+                    for _, pl in ipairs(Players:GetPlayers()) do
+                        if pl ~= lp then
+                            stickyRoles[pl] = nil
+                            applyRole(pl)
+                            updateLpVisualFor(pl)
+                        end
+                    end
+                    endRound()
+                end)
+            end
         end)
     end
     char.AncestryChanged:Connect(function(_, parent)
