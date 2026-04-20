@@ -23,10 +23,12 @@ local lpVisuals         = {}
 local murderer          = nil
 local isLpMurd          = false
 local gunDropHighlights = {}
+local originalSheriff = nil
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255,   0,   0),
     sheriff = Color3.fromRGB(  0, 100, 255),
+    hero    = Color3.fromRGB(255, 255,   0),
 }
 local LP_COLOR = {
     norole  = Color3.fromRGB(0, 255,  80),
@@ -224,8 +226,12 @@ local function getRole(p)
         or (bp       and bp:FindFirstChild("Gun"))
         or (wsModel  and wsModel:FindFirstChild("Gun"))
     if hasGun then
-        stickyRoles[p] = "sheriff"
-        return "sheriff"
+        if originalSheriff == nil then
+            originalSheriff = p
+        end
+        local role = (p == originalSheriff) and "sheriff" or "hero"
+        stickyRoles[p] = role
+        return role
     end
     return stickyRoles[p]
 end
@@ -297,6 +303,11 @@ local function refreshLpMurd()
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= lp then updateLpVisualFor(p) end
         end
+    end
+    if isLpMurd then
+        stopQuickShotLoop()
+    else
+        if not isLpSheriff then startQuickShotLoop() end
     end
 end
 
@@ -399,6 +410,9 @@ local function setupPlayer(p)
     end
     -- Watch future characters (new char = new round, clear sticky)
     p.CharacterAdded:Connect(function(char)
+        if originalSheriff == p then
+            originalSheriff = nil
+        end
         stickyRoles[p] = nil
         removeLpVisual(p)
         removeVisuals(p)
@@ -448,6 +462,11 @@ local function refreshLpSheriff()
         s:Play()
         game:GetService("Debris"):AddItem(s, 10)
     end
+    if isLpSheriff then
+        stopQuickShotLoop()
+    else
+        if not isLpMurd then startQuickShotLoop() end
+    end
 end
 
 local function watchLpGun(container)
@@ -456,6 +475,36 @@ local function watchLpGun(container)
     end)
     container.ChildRemoved:Connect(function(child)
         if child.Name == "Gun" then refreshLpSheriff() end
+    end)
+end
+
+local quickShotLoop = nil
+
+local function stopQuickShotLoop()
+    if quickShotLoop then
+        quickShotLoop:Disconnect()
+        quickShotLoop = nil
+    end
+end
+
+local function startQuickShotLoop()
+    stopQuickShotLoop()
+    quickShotLoop = RunService.Heartbeat:Connect(function()
+        if isLpMurd or isLpSheriff then
+            stopQuickShotLoop()
+            return
+        end
+        local char = lp.Character
+        local bp   = lp:FindFirstChild("Backpack")
+        local gun  = (bp   and bp:FindFirstChild("Gun"))
+                  or (char and char:FindFirstChild("Gun"))
+        if not gun then return end
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and gun.Parent ~= char then
+            local ok, err = pcall(function() hum:EquipTool(gun) end)
+            if not ok then warn("[MurderHUD] QuickShot equip: " .. tostring(err)) end
+        end
+        stopQuickShotLoop()
     end)
 end
 
@@ -495,7 +544,7 @@ Players.PlayerRemoving:Connect(function(p)
     stickyRoles[p] = nil
     removeLpVisual(p)
     removeVisuals(p)
-    if murderer == p then murderer = nil lbl.Text = "" end
+    if murderer == p then murderer = nil end
     local fake = fakeHRPs[p]
     if fake and fake.Parent then fake:Destroy() end
     fakeHRPs[p]  = nil
