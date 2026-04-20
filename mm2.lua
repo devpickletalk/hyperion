@@ -25,6 +25,7 @@ local isLpMurd          = false
 local isLpSheriff = false
 local gunDropHighlights = {}
 local originalSheriff = nil
+local gunDropped      = false
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255,   0,   0),
@@ -227,10 +228,7 @@ local function getRole(p)
         or (bp       and bp:FindFirstChild("Gun"))
         or (wsModel  and wsModel:FindFirstChild("Gun"))
     if hasGun then
-        if originalSheriff == nil then
-            originalSheriff = p
-        end
-        local role = (p == originalSheriff) and "sheriff" or "hero"
+        local role = gunDropped and "hero" or "sheriff"
         stickyRoles[p] = role
         return role
     end
@@ -362,7 +360,7 @@ local function watchChar(p, char)
         stickyRoles[p] = nil
         removeLpVisual(p)
         removeVisuals(p)
-        if murderer == p then murderer = nil end
+        if murderer == p then murderer = nil gunDropped  = false end
     end)
 end
 
@@ -434,9 +432,6 @@ local function setupPlayer(p)
     end
     -- Watch future characters (new char = new round, clear sticky)
     p.CharacterAdded:Connect(function(char)
-        if originalSheriff == p then
-            originalSheriff = nil
-        end
         stickyRoles[p] = nil
         removeLpVisual(p)
         removeVisuals(p)
@@ -530,7 +525,7 @@ Players.PlayerRemoving:Connect(function(p)
     stickyRoles[p] = nil
     removeLpVisual(p)
     removeVisuals(p)
-    if murderer == p then murderer = nil end
+    if murderer == p then murderer = nil gunDropped  = false wend
     local fake = fakeHRPs[p]
     if fake and fake.Parent then fake:Destroy() end
     fakeHRPs[p]  = nil
@@ -540,6 +535,7 @@ end)
 -- ── GunDrop: event-driven ─────────────────────────────────────────────────────
 Workspace.DescendantAdded:Connect(function(desc)
     if desc.Name ~= "GunDrop" then return end
+    gunDropped = true
     local ok, err = pcall(attachGunDropHighlight, desc)
     if not ok then warn("[MurderHUD] GunDrop DescendantAdded: " .. tostring(err)) end
 end)
