@@ -723,5 +723,4 @@ UIS.InputBegan:Connect(function(input, processed)
     local ok, err = pcall(function()
         remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
     end)
-    if not ok then warn("[MurderHUD] Gun FireServer: " .. tostring(err)) end
 end)
