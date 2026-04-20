@@ -22,6 +22,7 @@ local visuals           = {}
 local lpVisuals         = {}
 local murderer          = nil
 local isLpMurd          = false
+local isLpSheriff = false
 local gunDropHighlights = {}
 local originalSheriff = nil
 
@@ -470,14 +471,13 @@ local function setupLp()
     refreshLpMurd()
 end
 
-local isLpSheriff = false
 local function refreshLpSheriff()
     local char = lp.Character
     local bp   = lp:FindFirstChild("Backpack")
     local prev = isLpSheriff
     isLpSheriff = (char and char:FindFirstChild("Gun") ~= nil)
                or (bp   and bp:FindFirstChild("Gun")   ~= nil)
-    if prev == isLpSheriff then return end1 
+    if prev == isLpSheriff then return end
     if isLpSheriff then
         stopQuickShotLoop()
     else
