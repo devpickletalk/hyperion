@@ -525,7 +525,7 @@ Players.PlayerRemoving:Connect(function(p)
     stickyRoles[p] = nil
     removeLpVisual(p)
     removeVisuals(p)
-    if murderer == p then murderer = nil gunDropped  = false wend
+    if murderer == p then murderer = nil gunDropped  = false end
     local fake = fakeHRPs[p]
     if fake and fake.Parent then fake:Destroy() end
     fakeHRPs[p]  = nil
