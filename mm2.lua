@@ -451,7 +451,7 @@ local function ensureFakeHRP(p)
         part.Transparency = 1
         part.CastShadow   = false
         part.Size         = FAKE_HRP_SIZE
-        part.CFrame       = CFrame.new(HIDE_POS)
+        part.CFrame       = CFrame.new(HIDE_POS2)
         part.Parent       = Workspace
         fakeHRPs[p]       = part
     end)
@@ -620,7 +620,7 @@ RunService.Heartbeat:Connect(function()
                 end
             end
         else
-            fakePart.CFrame = CFrame.new(HIDE_POS)
+            fakePart.CFrame = CFrame.new(HIDE_POS2)
         end
     end
 end)
@@ -635,6 +635,7 @@ local function getAimPosition()
     local head  = char:FindFirstChild("Head")
     local hum   = char:FindFirstChildOfClass("Humanoid")
     if not hrp then return nil end
+    local myChar = lp.Character
     local isAir      = hum and hum.FloorMaterial == Enum.Material.Air
     local isClimbing = hum and hum:GetState() == Enum.HumanoidStateType.Climbing
     if isAir and not isClimbing then
@@ -662,7 +663,6 @@ local function getAimPosition()
         end
     end
     local target = torso or hrp
-    local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if myHRP and head then
         rayParams.FilterDescendantsInstances = { myChar, char }
