@@ -654,7 +654,7 @@ local function getAimPosition()
             return Vector3.new(hrp.Position.X, midY, hrp.Position.Z) + hOffset
         end
         return headPos + hOffset
-    enda
+    end
     local target = torso or hrp
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
