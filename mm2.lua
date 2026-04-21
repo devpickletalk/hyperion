@@ -4,7 +4,7 @@ if _G.__MurderHUD_Running then return end
 _G.__MurderHUD_Running = true
 
 local WALK_LEAD = 4.5
-local WALK_LEAD_SLOW = 1.75
+local WALK_LEAD_SLOW = 1.5
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -648,9 +648,9 @@ local function getAimPosition()
             return Vector3.new(hrp.Position.X, hrp.Position.Y - 2, hrp.Position.Z) + hOffset
         elseif vel2.Y > 0 and vel2.Y < 20 then
             local t = torso or hrp
-            return t.Position + Vector3.new(0, 0.65, 0) + hOffset
+            return t.Position + Vector3.new(0, 0.5, 0) + hOffset
         elseif vel2.Y >= 20 and vel2.Y < 50 then
-            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.50, hrp.Position.Z) + hOffset
+            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.40, hrp.Position.Z) + hOffset
         else
             local headPos = head and head.Position or hrp.Position
             rayParams.FilterDescendantsInstances = { myChar, char }
