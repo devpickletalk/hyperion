@@ -841,9 +841,10 @@ local function doShootMurder()
     if not mHRP then warn("[MurderHUD] ShootMurder: no murderer HRP") return end
     local ok, err = pcall(function()
         mHRP.Anchored = true
-        mHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -1)
+        mHRP.CFrame = myHRP.CFrame * CFrame.new(0, 0, -2.5)
     end)
     if not ok then warn("[MurderHUD] ShootMurder anchor: " .. tostring(err)) end
+    task.wait(0.3)
     local aimPos = mHRP.Position
     local ok3, err3 = pcall(function()
         remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
