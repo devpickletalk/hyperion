@@ -5,6 +5,7 @@ _G.__MurderHUD_Running = true
 
 local WALK_LEAD = 4.5
 local WALK_LEAD_SLOW = 1.5
+local WALK_LEAD_THROW = 1
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -712,24 +713,41 @@ local function doThrowKnife()
     if not (throwRemote and throwRemote:IsA("RemoteEvent")) then
         warn("[MurderHUD] ThrowKnife: KnifeThrown remote not found") return
     end
-    local nearest, nearestDist = nil, math.huge
+    local candidates = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= lp and p.Character then
-            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local dist = (hrp.Position - myHRP.Position).Magnitude
-                if dist < nearestDist then
-                    nearest = p
-                    nearestDist = dist
-                end
+            local hrp2 = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp2 then
+                local dist = (hrp2.Position - myHRP.Position).Magnitude
+                table.insert(candidates, { player = p, hrp = hrp2, dist = dist })
             end
         end
     end
+    table.sort(candidates, function(a, b) return a.dist < b.dist end)
+    local nearest, nearestHRP = nil, nil
+    rayParams.FilterDescendantsInstances = { char }
+    for _, c in ipairs(candidates) do
+        local dir    = c.hrp.Position - myHRP.Position
+        local result = Workspace:Raycast(myHRP.Position, dir, rayParams)
+        if not result or (result.Instance and result.Instance:IsDescendantOf(c.player.Character)) then
+            nearest    = c.player
+            nearestHRP = c.hrp
+            break
+        end
+    end
+    if not nearest and #candidates > 0 then
+        nearest    = candidates[1].player
+        nearestHRP = candidates[1].hrp
+    end
     if not nearest then warn("[MurderHUD] ThrowKnife: no target found") return end
-    local targetHRP = nearest.Character and nearest.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then warn("[MurderHUD] ThrowKnife: target HRP missing") return end
+    local vel  = nearestHRP.AssemblyLinearVelocity
+    local hVel = Vector3.new(vel.X, 0, vel.Z)
+    local aimPos = nearestHRP.Position
+    if hVel.Magnitude > 0 then
+        aimPos = aimPos + hVel.Unit * WALK_LEAD_THROW
+    end
     local ok, err = pcall(function()
-        throwRemote:FireServer(CFrame.new(myHRP.Position, targetHRP.Position), CFrame.new(targetHRP.Position))
+        throwRemote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
     end)
     if not ok then warn("[MurderHUD] ThrowKnife FireServer: " .. tostring(err)) end
 end
@@ -802,6 +820,7 @@ local function doGrabGun()
     if not gunDrop then warn("[MurderHUD] GrabGun: no GunDrop found") return end
     local ok, err = pcall(function()
         hrp.CFrame = CFrame.new(gunDrop.Position)
+        firetouchinterest(gunDrop, hrp, 0)
         hrp.CFrame = savedCFrame
     end)
     if not ok then warn("[MurderHUD] GrabGun: " .. tostring(err)) end
