@@ -572,10 +572,14 @@ end)
 -- Catch any drops already in workspace at startup
 for _, desc in ipairs(Workspace:GetDescendants()) do
     if desc.Name == "GunDrop" then
+        gunDropped = true
         local ok, err = pcall(attachGunDropHighlight, desc)
         if not ok then warn("[MurderHUD] GunDrop startup: " .. tostring(err)) end
     end
 end
+if gunDropped and innocentGui then
+    innocentGui.Enabled = not isLpMurd and not isLpSheriff
+endq
 
 -- ── FakeHRP sync: Heartbeat (positional, must remain per-frame) ───────────────
 RunService.Heartbeat:Connect(function()
