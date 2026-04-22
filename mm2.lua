@@ -579,7 +579,7 @@ for _, desc in ipairs(Workspace:GetDescendants()) do
 end
 if gunDropped and innocentGui then
     innocentGui.Enabled = not isLpMurd and not isLpSheriff
-endq
+end
 
 -- ── FakeHRP sync: Heartbeat (positional, must remain per-frame) ───────────────
 RunService.Heartbeat:Connect(function()
