@@ -693,7 +693,8 @@ local function doThrowKnife()
         end
     end
     if not knife then warn("[MurderHUD] ThrowKnife: no Knife found") return end
-    local throwRemote = knife:FindFirstChild("KnifeThrown")
+    local knifeEvents = knife:FindFirstChild("Events")
+    local throwRemote = knifeEvents and knifeEvents:FindFirstChild("KnifeThrown")
     if not (throwRemote and throwRemote:IsA("RemoteEvent")) then
         warn("[MurderHUD] ThrowKnife: KnifeThrown remote not found") return
     end
@@ -739,8 +740,12 @@ local function doKillAll()
         end
     end
     if not knife then warn("[MurderHUD] KillAll: no Knife found") return end
-    local stab = knife:FindFirstChild("KnifeStabbed")
-    if not (stab and stab:IsA("RemoteEvent")) then warn("[MurderHUD] KillAll: Stab remote not found") return end
+    local knifeEvents = knife and knife:FindFirstChild("Events")
+    local stab = knifeEvents and knifeEvents:FindFirstChild("KnifeStabbed")
+    if not (stab and stab:IsA("RemoteEvent")) then
+        pcall(function() lp.Character:FindFirstChild("Knife").Events.KnifeStabbed:FireServer() end)
+        return
+    end
     local myHRP = char:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
     local hrpList = {}
@@ -757,7 +762,7 @@ local function doKillAll()
             end
         end
     end
-    local ok4, err4 = pcall(function() stab:FireServer("Slash") end)
+    local ok4, err4 = pcall(function() stab:FireServer() end)
     if not ok4 then warn("[MurderHUD] KillAll FireServer: " .. tostring(err4)) end
     task.delay(2, function()
         for _, hrp in ipairs(hrpList) do
