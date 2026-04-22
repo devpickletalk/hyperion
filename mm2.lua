@@ -898,7 +898,7 @@ do
     local grabBtn = Instance.new("TextButton")
     grabBtn.Size             = UDim2.new(1, 0, 0, 50)
     grabBtn.Position         = UDim2.new(0, 0, 0, 0)
-    grabBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 40)
+    grabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     grabBtn.Text             = "Grab Gun"
     grabBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
     grabBtn.TextSize         = 18
