@@ -804,7 +804,7 @@ do
     local killBtn = Instance.new("TextButton")
     killBtn.Size             = UDim2.new(1, 0, 0, 50)
     killBtn.Position         = UDim2.new(0, 0, 0, 60)
-    killBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 20)
+    killBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     killBtn.Text             = "Kill All"
     killBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
     killBtn.TextSize         = 18
