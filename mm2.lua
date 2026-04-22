@@ -318,8 +318,10 @@ local function refreshLpMurd()
     local char = lp.Character
     local bp   = lp:FindFirstChild("Backpack")
     local prev = isLpMurd
-    isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
-            or (bp   and bp:FindFirstChild("Knife")   ~= nil)
+    local wsModel = Workspace:FindFirstChild(lp.Name)
+    isLpMurd = (char    and char:FindFirstChild("Knife")    ~= nil)
+            or (bp      and bp:FindFirstChild("Knife")      ~= nil)
+            or (wsModel and wsModel:FindFirstChild("Knife") ~= nil)
     if prev == isLpMurd then return end
     if isLpMurd then
         for _, p in ipairs(Players:GetPlayers()) do
