@@ -888,7 +888,7 @@ do
 
     local frame = Instance.new("Frame")
     frame.Size                   = UDim2.new(0, 170, 0, 60)
-    frame.Position               = UDim2.new(1, -180, 0, 80)
+    frame.Position               = UDim2.new(1, -180, 0, 10)
     frame.BackgroundTransparency = 1
     frame.Parent                 = gui
 
