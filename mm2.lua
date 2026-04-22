@@ -25,6 +25,7 @@ local originalSheriff = nil
 local gunDropped      = false
 local roundActive       = false
 local roundTimerThread  = nil
+local murderGui = nil
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0, 0),
@@ -251,6 +252,7 @@ end
 local function endRound()
     if not roundActive then return end
     roundActive    = false
+    if murderGui then murderGui.Enabled = false end
     gunDropped     = false
     if roundTimerThread then
         task.cancel(roundTimerThread)
@@ -316,6 +318,7 @@ local function refreshLpMurd()
     isLpMurd = (char and char:FindFirstChild("Knife") ~= nil)
             or (bp   and bp:FindFirstChild("Knife")   ~= nil)
     if prev == isLpMurd then return end
+    if murderGui then murderGui.Enabled = isLpMurd end
     if isLpMurd then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= lp then updateLpVisualFor(p) end
@@ -669,7 +672,54 @@ UIS.InputBegan:Connect(function(input, processed)
     end)
 end)
 
--- ── Chat command: ;killall ────────────────────────────────────────────────────
+local function doThrowKnife()
+    local char = lp.Character
+    if not char then return end
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    local knife = char:FindFirstChild("Knife")
+    if not knife then
+        local bp = lp:FindFirstChild("Backpack")
+        if bp then
+            local bpKnife = bp:FindFirstChild("Knife")
+            if bpKnife then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if not hum then warn("[MurderHUD] ThrowKnife: no Humanoid") return end
+                local ok2, err2 = pcall(function() hum:EquipTool(bpKnife) end)
+                if not ok2 then warn("[MurderHUD] ThrowKnife equip: " .. tostring(err2)) return end
+                task.wait(0.1)
+                knife = char:FindFirstChild("Knife")
+            end
+        end
+    end
+    if not knife then warn("[MurderHUD] ThrowKnife: no Knife found") return end
+    local throwRemote = knife:FindFirstChild("KnifeThrown")
+    if not (throwRemote and throwRemote:IsA("RemoteEvent")) then
+        warn("[MurderHUD] ThrowKnife: KnifeThrown remote not found") return
+    end
+    local nearest, nearestDist = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character then
+            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local dist = (hrp.Position - myHRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearest = p
+                    nearestDist = dist
+                end
+            end
+        end
+    end
+    if not nearest then warn("[MurderHUD] ThrowKnife: no target found") return end
+    local targetHRP = nearest.Character and nearest.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then warn("[MurderHUD] ThrowKnife: target HRP missing") return end
+    local ok, err = pcall(function()
+        throwRemote:FireServer(CFrame.new(myHRP.Position, targetHRP.Position), CFrame.new(targetHRP.Position))
+    end)
+    if not ok then warn("[MurderHUD] ThrowKnife FireServer: " .. tostring(err)) end
+end
+
+-- ── killall ────────────────────────────────────────────────────
 local function doKillAll()
     local char = lp.Character
     if not char then return end
@@ -689,7 +739,7 @@ local function doKillAll()
         end
     end
     if not knife then warn("[MurderHUD] KillAll: no Knife found") return end
-    local stab = knife:FindFirstChild("Stab")
+    local stab = knife:FindFirstChild("KnifeStabbed")
     if not (stab and stab:IsA("RemoteEvent")) then warn("[MurderHUD] KillAll: Stab remote not found") return end
     local myHRP = char:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
@@ -718,9 +768,93 @@ local function doKillAll()
     end)
 end
 
-lp.Chatted:Connect(function(msg)
-    if msg:lower() == ";killall" then
+-- ── Murder GUI ────────────────────────────────────────────────────────────────
+do
+    local gui = Instance.new("ScreenGui")
+    gui.Name        = "MurderHUD_Gui"
+    gui.ResetOnSpawn = false
+    gui.Enabled     = false
+    gui.Parent      = lp:WaitForChild("PlayerGui")
+    murderGui       = gui
+
+    local frame = Instance.new("Frame")
+    frame.Size                  = UDim2.new(0, 170, 0, 120)
+    frame.Position              = UDim2.new(0.5, -85, 0.5, -60)
+    frame.BackgroundTransparency = 1
+    frame.Parent                = gui
+
+    local throwBtn = Instance.new("TextButton")
+    throwBtn.Size             = UDim2.new(1, 0, 0, 50)
+    throwBtn.Position         = UDim2.new(0, 0, 0, 0)
+    throwBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    throwBtn.Text             = "Throw Knife"
+    throwBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+    throwBtn.TextSize         = 18
+    throwBtn.Font             = Enum.Font.GothamSemibold
+    throwBtn.Parent           = frame
+    local c1 = Instance.new("UICorner")
+    c1.CornerRadius = UDim.new(0, 10)
+    c1.Parent       = throwBtn
+
+    local killBtn = Instance.new("TextButton")
+    killBtn.Size             = UDim2.new(1, 0, 0, 50)
+    killBtn.Position         = UDim2.new(0, 0, 0, 60)
+    killBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 20)
+    killBtn.Text             = "Kill All"
+    killBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+    killBtn.TextSize         = 18
+    killBtn.Font             = Enum.Font.GothamSemibold
+    killBtn.Parent           = frame
+    local c2 = Instance.new("UICorner")
+    c2.CornerRadius = UDim.new(0, 10)
+    c2.Parent       = killBtn
+
+    throwBtn.MouseButton1Click:Connect(function()
+        local ok, err = pcall(doThrowKnife)
+        if not ok then warn("[MurderHUD] ThrowKnife: " .. tostring(err)) end
+    end)
+
+    killBtn.MouseButton1Click:Connect(function()
         local ok, err = pcall(doKillAll)
         if not ok then warn("[MurderHUD] KillAll: " .. tostring(err)) end
+    end)
+
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    local function onInputBegan(input)
+        local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+        local isTouch = input.UserInputType == Enum.UserInputType.Touch
+        if not (isMouse or isTouch) then return end
+        dragging  = true
+        dragStart = input.Position
+        startPos  = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
-end)
+
+    local function onInputChanged(input)
+        local isMouse = input.UserInputType == Enum.UserInputType.MouseMovement
+        local isTouch = input.UserInputType == Enum.UserInputType.Touch
+        if isMouse or isTouch then dragInput = input end
+    end
+
+    for _, obj in ipairs({ frame, throwBtn, killBtn }) do
+        obj.InputBegan:Connect(onInputBegan)
+        obj.InputChanged:Connect(onInputChanged)
+    end
+
+    UIS.InputChanged:Connect(function(input)
+        if input ~= dragInput or not dragging then return end
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end)
+end
