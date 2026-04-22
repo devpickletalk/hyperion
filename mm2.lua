@@ -331,7 +331,6 @@ local function refreshLpMurd()
         clearAllLpVisuals()
     end
     if murderGui then murderGui.Enabled = isLpMurd end
-    if innocentGui then innocentGui.Enabled = not isLpMurd and not isLpSheriff and gunDropped end
 end
 
 -- ── Watch container for tool events ──────────────────────────────────────────
@@ -497,7 +496,6 @@ local function refreshLpSheriff()
     isLpSheriff = (char and char:FindFirstChild("Gun") ~= nil)
                or (bp   and bp:FindFirstChild("Gun")   ~= nil)
     if prev == isLpSheriff then return end
-    if innocentGui then innocentGui.Enabled = not isLpMurd and not isLpSheriff and gunDropped end
 end
 
 local function watchLpGun(container)
@@ -559,9 +557,15 @@ end)
 Workspace.DescendantAdded:Connect(function(desc)
     if desc.Name ~= "GunDrop" then return end
     gunDropped = true
-    if innocentGui then innocentGui.Enabled = not isLpMurd and not isLpSheriff and gunDropped end
+    if innocentGui then innocentGui.Enabled = not isLpMurd and not isLpSheriff end
     local ok, err = pcall(attachGunDropHighlight, desc)
     if not ok then warn("[MurderHUD] GunDrop DescendantAdded: " .. tostring(err)) end
+end)
+
+Workspace.DescendantRemoving:Connect(function(desc)
+    if desc.Name ~= "GunDrop" then return end
+    gunDropped = false
+    if innocentGui then innocentGui.Enabled = false end
 end)
 
 -- Catch any drops already in workspace at startup
