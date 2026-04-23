@@ -653,9 +653,17 @@ local function getAimPosition()
     local vel  = hrp.AssemblyLinearVelocity
     local hVel = Vector3.new(vel.X, 0, vel.Z)
     local aboveMid = Vector3.new(0, 0.35, 0)
+    if head then
+        rayParams.FilterDescendantsInstances = { myChar, char }
+        local ceilHit = Workspace:Raycast(head.Position, Vector3.new(0, 6, 0), rayParams)
+        if ceilHit then
+            local midY = (head.Position.Y + ceilHit.Position.Y) / 2
+            return Vector3.new(hrp.Position.X, midY, hrp.Position.Z)
+        end
+    end
     if hVel.Magnitude >= 15.8 then
         return target.Position + aboveMid + hVel.Unit * WALK_LEAD
-    elseif hVel.Magnitude > 0 then
+    elseif hVel.Magnitude >= 9 then
         return target.Position + aboveMid + hVel.Unit * WALK_LEAD_SLOW
     end
     return target.Position + aboveMid
