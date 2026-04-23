@@ -628,7 +628,7 @@ local function getAimPosition()
         local hOffset = hVel2.Magnitude > 0 and hVel2.Unit * lead or Vector3.zero
         if vel2.Y < -20 then
             return Vector3.new(hrp.Position.X, hrp.Position.Y - 2, hrp.Position.Z) + hOffset
-        elseif vel2.Y > 0 and vel2.Y < 20 then
+        elseif vel2.Y > 2 and vel2.Y < 20 then
             local t = torso or hrp
             return t.Position + Vector3.new(0, 0.4, 0) + hOffset
         elseif vel2.Y >= 20 and vel2.Y < 50 then
@@ -646,11 +646,18 @@ local function getAimPosition()
     end
     local target = torso or hrp
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
-    if myHRP and head then
+    if myHRP then
         rayParams.FilterDescendantsInstances = { myChar, char }
-        local dir    = target.Position - myHRP.Position
-        local result = Workspace:Raycast(myHRP.Position, dir, rayParams)
-        if result then target = head end
+        for _, candidate in ipairs({ torso, head, hrp }) do
+            if candidate then
+                local dir = candidate.Position - myHRP.Position
+                local result = Workspace:Raycast(myHRP.Position, dir, rayParams)
+                if not result or result.Instance:IsDescendantOf(char) then
+                    target = candidate
+                    break
+                end
+            end
+        end
     end
     local vel  = hrp.AssemblyLinearVelocity
     local hVel = Vector3.new(vel.X, 0, vel.Z)
