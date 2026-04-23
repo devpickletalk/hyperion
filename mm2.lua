@@ -393,7 +393,7 @@ local function watchChar(p, char)
     char.AncestryChanged:Connect(function(_, parent)
         if parent ~= nil then
             local lobby = Workspace:FindFirstChild("RegularLobby")
-            if lobby and (parent == lobby or char:IsDescendantOf(lobby)) then
+            if lobby and char:IsDescendantOf(lobby) then
                 removeLpVisual(p)
                 removeVisuals(p)
             end
@@ -1054,16 +1054,16 @@ task.spawn(function()
     lp.CharacterAdded:Connect(function(char)
         char.AncestryChanged:Connect(function(_, parent)
             local inLobby = RegularLobby and char:IsDescendantOf(RegularLobby)
-            if murderGui then murderGui.Enabled = inLobby and false or isLpMurd end
-            if innocentGui then innocentGui.Enabled = inLobby and false or (gunDropped and not isLpMurd and not isLpSheriff) end
+            if murderGui then murderGui.Enabled = not inLobby and isLpMurd end
+            if innocentGui then innocentGui.Enabled = not inLobby and (gunDropped and not isLpMurd and not isLpSheriff) end
         end)
     end)
     local lpChar = lp.Character
     if lpChar then
         lpChar.AncestryChanged:Connect(function(_, parent)
             local inLobby = RegularLobby and lpChar:IsDescendantOf(RegularLobby)
-            if murderGui then murderGui.Enabled = inLobby and false or isLpMurd end
-            if innocentGui then innocentGui.Enabled = inLobby and false or (gunDropped and not isLpMurd and not isLpSheriff) end
+            if murderGui then murderGui.Enabled = not inLobby and isLpMurd end
+            if innocentGui then innocentGui.Enabled = not inLobby and (gunDropped and not isLpMurd and not isLpSheriff) end
         end)
     end
     if timerLabel.Active and not roundActive then startRound()
