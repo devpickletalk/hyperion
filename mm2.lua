@@ -25,7 +25,6 @@ local gunDropHighlights = {}
 local originalSheriff = nil
 local gunDropped      = false
 local roundActive       = false
-local roundTimerThread  = nil
 local murderGui = nil
 local innocentGui = nil
 
@@ -257,12 +256,19 @@ local function endRound()
     if murderGui then murderGui.Enabled = false end
     if innocentGui then innocentGui.Enabled = false end
     gunDropped     = false
-    if roundTimerThread then
-        task.cancel(roundTimerThread)
-        roundTimerThread = nil
+    local lobby = Workspace:FindFirstChild("RegularLobby")
+    for p in pairs(visuals) do
+        local pChar = p.Character
+        if not lobby or not pChar or pChar:IsDescendantOf(lobby) then
+            removeVisuals(p)
+        end
     end
-    for p in pairs(visuals) do removeVisuals(p) end
-    clearAllLpVisuals()
+    for p in pairs(lpVisuals) do
+        local pChar = p.Character
+        if not lobby or not pChar or pChar:IsDescendantOf(lobby) then
+            removeLpVisual(p)
+        end
+    end
     roles      = {}
     stickyRoles = {}
     murderer   = nil
@@ -283,7 +289,6 @@ local function startRound()
     endRound()
     gunDropped       = false
     roundActive      = true
-    roundTimerThread = task.delay(179, endRound)
 end
 
 -- ── Apply role state for a player ─────────────────────────────────────────────
@@ -301,9 +306,15 @@ local function applyRole(p)
         murderer = nil
     end
     if role and pChar then
-        local v = visuals[p]
-        if not v or not v.bb or not v.bb.Parent or old ~= role then
-            attachVisuals(p, pChar, role)
+        local lobby = Workspace:FindFirstChild("RegularLobby")
+        if lobby and pChar:IsDescendantOf(lobby) then
+            removeVisuals(p)
+            removeLpVisual(p)
+        else
+            local v = visuals[p]
+            if not v or not v.bb or not v.bb.Parent or old ~= role then
+                attachVisuals(p, pChar, role)
+            end
         end
     else
         removeVisuals(p)
@@ -378,7 +389,14 @@ local function watchChar(p, char)
         end)
     end
     char.AncestryChanged:Connect(function(_, parent)
-        if parent ~= nil then return end
+        if parent ~= nil then
+            local lobby = Workspace:FindFirstChild("RegularLobby")
+            if lobby and (parent == lobby or char:IsDescendantOf(lobby)) then
+                removeLpVisual(p)
+                removeVisuals(p)
+            end
+            return
+        end
         roles[p]       = nil
         stickyRoles[p] = nil
         if murderer == p then
@@ -992,4 +1010,22 @@ Workspace.DescendantRemoving:Connect(function(desc)
     if desc.Name ~= "GunDrop" then return end
     gunDropped = false
     if innocentGui then innocentGui.Enabled = false end
+end)
+
+task.spawn(function()
+    local ok, timerLabel = pcall(function()
+        return Workspace:WaitForChild("RoundTimerPart", 10)
+            :WaitForChild("SurfaceGui", 5)
+            :WaitForChild("Timer", 5)
+    end)
+    if not ok or not timerLabel then warn("[MurderHUD] RoundTimer: not found") return end
+    timerLabel:GetPropertyChangedSignal("Active"):Connect(function()
+        if timerLabel.Active then
+            if not roundActive then startRound() end
+        else
+            endRound()
+        end
+    end)
+    if timerLabel.Active and not roundActive then startRound()
+    elseif not timerLabel.Active and roundActive then endRound() end
 end)
