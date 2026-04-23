@@ -27,7 +27,17 @@ local gunDropped      = false
 local roundActive       = false
 local murderGui = nil
 local innocentGui = nil
-local RegularLobby = Workspace:FindFirstChild("RegularLobby") and Workspace.RegularLobby:FindFirstChild("MainLobby")
+local LOBBY_MIN = Vector3.new(-56, 492, -91)
+local LOBBY_MAX = Vector3.new(88, 554, 76)
+local function isInLobby(char)
+    if not char then return false end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    local p = hrp.Position
+    return p.X >= LOBBY_MIN.X and p.X <= LOBBY_MAX.X
+       and p.Y >= LOBBY_MIN.Y and p.Y <= LOBBY_MAX.Y
+       and p.Z >= LOBBY_MIN.Z and p.Z <= LOBBY_MAX.Z
+end
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0, 0),
@@ -257,10 +267,9 @@ local function endRound()
     if murderGui then murderGui.Enabled = false end
     if innocentGui then innocentGui.Enabled = false end
     gunDropped     = false
-    local lobby = Workspace:FindFirstChild("RegularLobby")
     for p in pairs(visuals) do
         local pChar = p.Character
-        if not lobby or not pChar or pChar:IsDescendantOf(lobby) then
+        if not pChar or isInLobby(pChar) then
             wait(9)
             removeVisuals(p)
         end
@@ -309,8 +318,7 @@ local function applyRole(p)
         murderer = nil
     end
     if role and pChar then
-        local lobby = Workspace:FindFirstChild("RegularLobby")
-        if lobby and pChar:IsDescendantOf(lobby) then
+        if isInLobby(pChar) then
             removeVisuals(p)
             removeLpVisual(p)
         else
@@ -347,7 +355,7 @@ local function refreshLpMurd()
     else
         clearAllLpVisuals()
     end
-    local lpInLobby = RegularLobby and lp.Character and lp.Character:IsDescendantOf(RegularLobby)
+    local lpInLobby = isInLobby(lp.Character)
     if murderGui then murderGui.Enabled = isLpMurd and not lpInLobby end
 end
 
@@ -394,8 +402,7 @@ local function watchChar(p, char)
     end
     char.AncestryChanged:Connect(function(_, parent)
         if parent ~= nil then
-            local lobby = Workspace:FindFirstChild("RegularLobby")
-            if lobby and char:IsDescendantOf(lobby) then
+            if isInLobby(char) then
                 removeLpVisual(p)
                 removeVisuals(p)
             end
@@ -521,7 +528,7 @@ local function refreshLpSheriff()
     isLpSheriff = (char and char:FindFirstChild("Gun") ~= nil)
                or (bp   and bp:FindFirstChild("Gun")   ~= nil)
     if prev == isLpSheriff then return end
-    local lpInLobby = RegularLobby and lp.Character and lp.Character:IsDescendantOf(RegularLobby)
+    local lpInLobby = isInLobby(lp.Character)
     if innocentGui then innocentGui.Enabled = lpInLobby and false or (not isLpSheriff and innocentGui.Enabled) end
     if murderGui and lpInLobby then murderGui.Enabled = false end
 end
@@ -1023,7 +1030,7 @@ end)
 Workspace.DescendantAdded:Connect(function(desc)
     if desc.Name ~= "GunDrop" then return end
     gunDropped = true
-    local lpInLobby = RegularLobby and lp.Character and lp.Character:IsDescendantOf(RegularLobby)
+    local lpInLobby = isInLobby(lp.Character)
     if innocentGui then innocentGui.Enabled = not isLpMurd and not lpInLobby end
     local ok, err = pcall(attachGunDropHighlight, desc)
     if not ok then warn("[MurderHUD] GunDrop DescendantAdded: " .. tostring(err)) end
@@ -1062,7 +1069,7 @@ task.spawn(function()
     end)
     lp.CharacterAdded:Connect(function(char)
         char.AncestryChanged:Connect(function(_, parent)
-            local inLobby = RegularLobby and char:IsDescendantOf(RegularLobby)
+            local inLobby = isInLobby(char)
             if murderGui then murderGui.Enabled = not inLobby and isLpMurd end
             if innocentGui then innocentGui.Enabled = not inLobby and (gunDropped and not isLpMurd and not isLpSheriff) end
         end)
@@ -1070,7 +1077,7 @@ task.spawn(function()
     local lpChar = lp.Character
     if lpChar then
         lpChar.AncestryChanged:Connect(function(_, parent)
-            local inLobby = RegularLobby and lpChar:IsDescendantOf(RegularLobby)
+            local inLobby = isInLobby(char)
             if murderGui then murderGui.Enabled = not inLobby and isLpMurd end
             if innocentGui then innocentGui.Enabled = not inLobby and (gunDropped and not isLpMurd and not isLpSheriff) end
         end)
