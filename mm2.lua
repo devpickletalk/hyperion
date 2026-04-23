@@ -632,7 +632,7 @@ local function getAimPosition()
             local t = torso or hrp
             return t.Position + Vector3.new(0, 0.4, 0) + hOffset
         elseif vel2.Y >= 20 and vel2.Y < 50 then
-            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.30, hrp.Position.Z) + hOffset
+            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.5, hrp.Position.Z) + hOffset
         else
             local headPos = head and head.Position or hrp.Position
             rayParams.FilterDescendantsInstances = { myChar, char }
