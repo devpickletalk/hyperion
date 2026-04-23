@@ -27,6 +27,7 @@ local gunDropped      = false
 local roundActive       = false
 local murderGui = nil
 local innocentGui = nil
+local RegularLobby = Workspace:FindFirstChild("RegularLobby")
 
 local ROLE_COLOR = {
     murder  = Color3.fromRGB(255, 0, 0),
@@ -592,6 +593,7 @@ RunService.Heartbeat:Connect(function()
                     local v = list[i]
                     if v and v.Parent and v.CanCollide then
                         v.CanCollide = false
+                        break
                     end
                 end
             end
@@ -1026,6 +1028,21 @@ task.spawn(function()
             endRound()
         end
     end)
+    lp.CharacterAdded:Connect(function(char)
+        char.AncestryChanged:Connect(function(_, parent)
+            local inLobby = RegularLobby and char:IsDescendantOf(RegularLobby)
+            if murderGui then murderGui.Enabled = inLobby and false or isLpMurd end
+            if innocentGui then innocentGui.Enabled = inLobby and false or (gunDropped and not isLpMurd and not isLpSheriff) end
+        end)
+    end)
+    local lpChar = lp.Character
+    if lpChar then
+        lpChar.AncestryChanged:Connect(function(_, parent)
+            local inLobby = RegularLobby and lpChar:IsDescendantOf(RegularLobby)
+            if murderGui then murderGui.Enabled = inLobby and false or isLpMurd end
+            if innocentGui then innocentGui.Enabled = inLobby and false or (gunDropped and not isLpMurd and not isLpSheriff) end
+        end)
+    end
     if timerLabel.Active and not roundActive then startRound()
     elseif not timerLabel.Active and roundActive then endRound() end
 end)
