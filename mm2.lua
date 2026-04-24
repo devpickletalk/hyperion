@@ -741,7 +741,8 @@ UIS.InputEnded:Connect(function(input, processed)
     local ok, err = pcall(function()
         remote:FireServer(CFrame.new(myHRP.Position, aimPos), CFrame.new(aimPos))
     end)
-        
+
+    task.wait(0.4)
     if murdHRP then
         pcall(function()
             murdHRP.Anchored = false
