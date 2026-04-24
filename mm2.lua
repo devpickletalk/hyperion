@@ -628,19 +628,19 @@ local function getAimPosition()
         local lead   = hVel2.Magnitude >= 15.8 and WALK_LEAD
                     or (hVel2.Magnitude > 0    and WALK_LEAD_SLOW or 0)
         local hOffset = hVel2.Magnitude > 0 and hVel2.Unit * lead or Vector3.zero
-        if vel2.Y < -20 then
-            return Vector3.new(hrp.Position.X, hrp.Position.Y - 2, hrp.Position.Z) + hOffset
+        if vel2.Y < -25 then
+            return Vector3.new(hrp.Position.X, hrp.Position.Y - 0.3, hrp.Position.Z) + hOffset
         elseif vel2.Y > 3 and vel2.Y < 20 then
             local t = torso or hrp
             return t.Position + Vector3.new(0, 0.3, 0) + hOffset
         elseif vel2.Y >= 20 and vel2.Y < 50 then
-            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.5, hrp.Position.Z) + hOffset
+            return Vector3.new(hrp.Position.X, hrp.Position.Y + 0.3, hrp.Position.Z) + hOffset
         else
             local headPos = head and head.Position or hrp.Position
             rayParams.FilterDescendantsInstances = { myChar, char }
             local downHit = Workspace:Raycast(headPos, Vector3.new(0, -50, 0), rayParams)
             if downHit then
-                local midY = (headPos.Y + downHit.Position.Y) / 2 - 0.2
+                local midY = (headPos.Y + downHit.Position.Y) / 2
                 return Vector3.new(hrp.Position.X, midY, hrp.Position.Z) + hOffset
             end
             return headPos + hOffset
