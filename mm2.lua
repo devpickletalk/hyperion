@@ -267,27 +267,17 @@ end
 
 local function endRound()
     if not roundActive then return end
-    roundActive    = false
+    roundActive = false
     if murderGui then murderGui.Enabled = false end
     if innocentGui then innocentGui.Enabled = false end
-    gunDropped     = false
-    for p in pairs(visuals) do
-        local pChar = p.Character
-        if not pChar or isInLobby(pChar) then
-            task.wait(9)
-            removeVisuals(p)
-        end
-    end
-    for p in pairs(lpVisuals) do
-        local pChar = p.Character
-        if not pChar or isInLobby(pChar) then
-            task.wait(9)
-            removeLpVisual(p)
-        end
-    end
-    roles      = {}
-    stickyRoles = {}
-    murderer   = nil
+    gunDropped = false
+    murderer = nil
+    task.delay(9, function()
+        for p in pairs(visuals) do removeVisuals(p) end
+        for p in pairs(lpVisuals) do removeLpVisual(p) end
+        roles = {}
+        stickyRoles = {}
+    end)
 end
 
 local function checkInnocentsDead()
@@ -356,6 +346,7 @@ local function refreshLpMurd()
                 updateLpVisualFor(p)
             end
         end
+        if innocentGui then innocentGui.Enabled = false end
     else
         clearAllLpVisuals()
     end
@@ -529,7 +520,7 @@ local function refreshLpSheriff()
                or (bp   and bp:FindFirstChild("Gun")   ~= nil)
     if prev == isLpSheriff then return end
     local lpInLobby = isInLobby(lp.Character)
-    if innocentGui then innocentGui.Enabled = lpInLobby and false or (not isLpSheriff and innocentGui.Enabled) end
+    if innocentGui then innocentGui.Enabled = not lpInLobby and not isLpMurd and not isLpSheriff and innocentGui.Enabled end
     if murderGui and lpInLobby then murderGui.Enabled = false end
 end
 
