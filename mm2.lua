@@ -798,6 +798,18 @@ UIS.InputEnded:Connect(function(input, processed)
         if delta > 12 then touchStartPos = nil return end
     end
     touchStartPos = nil
+    local isFakeBombFire = input.UserInputType == Enum.UserInputType.MouseButton1
+        or (input.UserInputType == Enum.UserInputType.Touch
+            and not UIS:GetFocusedTextBox()
+            and input.Position.X > (workspace.CurrentCamera.ViewportSize.X * 0.35))
+    if isFakeBombFire and not processed then
+        if touchStartPos then
+            local delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(touchStartPos.X, touchStartPos.Y)).Magnitude
+            if delta > 12 then return end
+        end
+        local ok, err = pcall(doFakeBomb)
+        if not ok then warn("[MurderHUD] FakeBomb input: " .. tostring(err)) end
+    end
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
@@ -1022,6 +1034,33 @@ do
             startPos.Y.Offset + delta.Y
         )
     end)
+end
+
+-- ── FakeBomb ──────────────────────────────────────────────────────────────────
+local function doFakeBomb()
+    local char = lp.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bomb = char:FindFirstChild("FakeBomb")
+        or (Workspace:FindFirstChild(lp.Name) and Workspace[lp.Name]:FindFirstChild("FakeBomb"))
+    if not bomb then warn("[MurderHUD] FakeBomb: not found on character") return end
+
+    local remote = bomb:FindFirstChild("Remote")
+    if not (remote and remote:IsA("RemoteEvent")) then
+        warn("[MurderHUD] FakeBomb: Remote not found")
+        return
+    end
+
+    -- Place CFrame just under lp feet so they can jump on it
+    local footPos = hrp.Position - Vector3.new(0, (hrp.Size.Y / 2) + 0.5, 0)
+    local placeCF = CFrame.new(footPos)
+
+    local ok, err = pcall(function()
+        remote:FireServer(placeCF, 50)
+    end)
+    if not ok then warn("[MurderHUD] FakeBomb FireServer: " .. tostring(err)) end
 end
 
 -- ── Innocent GUI ──────────────────────────────────────────────────────────────
