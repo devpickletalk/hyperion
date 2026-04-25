@@ -9,6 +9,7 @@ local WALK_LEAD_THROW = 0.4
 local BULLET_DELAY    = 0.4
 local VEL_SMOOTH_SIZE  = 4
 local SPAM_JUMP_VEL    = 35
+local FAKEBOMB_Y_OFFSET = 3
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -796,12 +797,11 @@ local function doFakeBomb()
         return
     end
 
-    local rayP = RaycastParams.new()
-    rayP.FilterType = Enum.RaycastFilterType.Exclude
-    rayP.FilterDescendantsInstances = { char }
-    local hit = Workspace:Raycast(hrp.Position, Vector3.new(0, -20, 0), rayP)
-    local footY = hit and hit.Position.Y or (hrp.Position.Y - hrp.Size.Y / 2)
-    local placeCF = CFrame.new(Vector3.new(hrp.Position.X, footY, hrp.Position.Z))
+    local placeCF = CFrame.new(Vector3.new(
+        hrp.Position.X,
+        hrp.Position.Y - FAKEBOMB_Y_OFFSET,
+        hrp.Position.Z
+    ))
 
     local ok, err = pcall(function()
         remote:FireServer(placeCF, 50)
