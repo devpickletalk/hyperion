@@ -654,7 +654,6 @@ local function getAimPosition()
     local rawVel  = hrp.AssemblyLinearVelocity
     local smoothV = getSmoothedVel(murderer)
 
-    -- Blend: 60% smoothed + 40% raw so sudden direction changes still register
     local vel = smoothV * 0.6 + rawVel * 0.4
 
     local pos   = hrp.Position
@@ -665,13 +664,11 @@ local function getAimPosition()
     local isClimbing = hum and hum:GetState() == Enum.HumanoidStateType.Climbing
     local inAir      = isAir and not isClimbing
 
-    -- Body part offsets relative to HRP (stable within prediction window)
     local torsoOff = torso and (torso.Position - pos) or Vector3.new(0, 0.9, 0)
     local headOff  = head  and (head.Position  - pos) or Vector3.new(0, 2.5, 0)
 
-    -- Distance to target — closer targets need less dt adjustment
     local dist  = (pos - myHRP.Position).Magnitude
-    local dt    = BULLET_DELAY + math.clamp(dist / 400, 0, 0.1)  -- slight distance correction, capped
+    local dt    = BULLET_DELAY + math.clamp(dist / 400, 0, 0.1)
 
     -- ── Idle on ground: shoot current torso with visibility check ───────────
     if speed < 1.5 and not inAir then
@@ -689,8 +686,25 @@ local function getAimPosition()
     end
 
     -- ── Horizontal prediction (constant velocity, blended) ──────────────────
-    local predX = pos.X + vel.X * dt
-    local predZ = pos.Z + vel.Z * dt
+    local LEAD_FAST   = 4.6   -- speed >= 15.87
+    local LEAD_SLOW   = 1.4   -- speed >= 9
+    local LEAD_THROW  = 0.4   -- speed > 0 but slow
+
+    local hUnit  = hVel.Magnitude > 0 and hVel.Unit or Vector3.zero
+    local lead
+    if speed >= 15.87 then
+        lead = LEAD_FAST
+    elseif speed >= 9 then
+        lead = LEAD_SLOW
+    elseif speed > 0 then
+        lead = LEAD_THROW
+    else
+        lead = 0
+    end
+
+    local hOffset = hUnit * lead
+    local predX   = pos.X + hOffset.X
+    local predZ   = pos.Z + hOffset.Z
 
     -- ── Vertical prediction ─────────────────────────────────────────────────
     local predY
