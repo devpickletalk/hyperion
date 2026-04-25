@@ -839,18 +839,6 @@ UIS.InputEnded:Connect(function(input, processed)
         if delta > 12 then touchStartPos = nil return end
     end
     touchStartPos = nil
-    local isFakeBombFire = input.UserInputType == Enum.UserInputType.MouseButton1
-        or (input.UserInputType == Enum.UserInputType.Touch
-            and not UIS:GetFocusedTextBox()
-            and input.Position.X > (workspace.CurrentCamera.ViewportSize.X * 0.35))
-    if isFakeBombFire and not processed then
-        if touchStartPos then
-            local delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(touchStartPos.X, touchStartPos.Y)).Magnitude
-            if delta > 12 then return end
-        end
-        local ok, err = pcall(doFakeBomb)
-        if not ok then warn("[MurderHUD] FakeBomb input: " .. tostring(err)) end
-    end
     local myChar = lp.Character
     local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
     if not myHRP then return end
