@@ -777,6 +777,33 @@ local function getShootRemote()
     return (r and r:IsA("RemoteEvent")) and r or nil
 end
 
+-- ── FakeBomb ──────────────────────────────────────────────────────────────────
+local function doFakeBomb()
+    local char = lp.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bomb = char:FindFirstChild("FakeBomb")
+        or (Workspace:FindFirstChild(lp.Name) and Workspace[lp.Name]:FindFirstChild("FakeBomb"))
+    if not bomb then warn("[MurderHUD] FakeBomb: not found on character") return end
+
+    local remote = bomb:FindFirstChild("Remote")
+    if not (remote and remote:IsA("RemoteEvent")) then
+        warn("[MurderHUD] FakeBomb: Remote not found")
+        return
+    end
+
+    -- Place CFrame just under lp feet so they can jump on it
+    local footPos = hrp.Position - Vector3.new(0, (hrp.Size.Y / 2) + 0.5, 0)
+    local placeCF = CFrame.new(footPos)
+
+    local ok, err = pcall(function()
+        remote:FireServer(placeCF, 50)
+    end)
+    if not ok then warn("[MurderHUD] FakeBomb FireServer: " .. tostring(err)) end
+end
+a
 -- ── Input ─────────────────────────────────────────────────────────────────────
 local touchStartPos = nil
 UIS.InputBegan:Connect(function(input, processed)
@@ -1034,33 +1061,6 @@ do
             startPos.Y.Offset + delta.Y
         )
     end)
-end
-
--- ── FakeBomb ──────────────────────────────────────────────────────────────────
-local function doFakeBomb()
-    local char = lp.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local bomb = char:FindFirstChild("FakeBomb")
-        or (Workspace:FindFirstChild(lp.Name) and Workspace[lp.Name]:FindFirstChild("FakeBomb"))
-    if not bomb then warn("[MurderHUD] FakeBomb: not found on character") return end
-
-    local remote = bomb:FindFirstChild("Remote")
-    if not (remote and remote:IsA("RemoteEvent")) then
-        warn("[MurderHUD] FakeBomb: Remote not found")
-        return
-    end
-
-    -- Place CFrame just under lp feet so they can jump on it
-    local footPos = hrp.Position - Vector3.new(0, (hrp.Size.Y / 2) + 0.5, 0)
-    local placeCF = CFrame.new(footPos)
-
-    local ok, err = pcall(function()
-        remote:FireServer(placeCF, 50)
-    end)
-    if not ok then warn("[MurderHUD] FakeBomb FireServer: " .. tostring(err)) end
 end
 
 -- ── Innocent GUI ──────────────────────────────────────────────────────────────
