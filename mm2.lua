@@ -803,7 +803,7 @@ local function doFakeBomb()
     end)
     if not ok then warn("[MurderHUD] FakeBomb FireServer: " .. tostring(err)) end
 end
-a
+
 -- ── Input ─────────────────────────────────────────────────────────────────────
 local touchStartPos = nil
 UIS.InputBegan:Connect(function(input, processed)
